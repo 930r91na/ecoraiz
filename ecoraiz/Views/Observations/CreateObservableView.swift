@@ -80,7 +80,7 @@ struct CreateObservationView: View {
                                         
                                         if suggestion.name == speciesGuess {
                                             Image(systemName: "checkmark")
-                                                .foregroundColor(.green)
+                                                .foregroundColor(Color.primaryGreen)
                                                 .padding(.leading, 5)
                                         }
                                     }
@@ -123,7 +123,7 @@ struct CreateObservationView: View {
                                     
                                     Image(systemName: showCalendar ? "chevron.up" : "chevron.down")
                                 }
-                                .foregroundColor(.blue)
+                                .foregroundColor(Color.primaryGreen)
                             }
                         }
                         
@@ -526,6 +526,7 @@ struct PhotosGridView: View {
                         VStack {
                             Image(systemName: "camera.fill")
                                 .font(.title)
+                                .foregroundColor(Color.primaryGreen)
                             Text("Cámara")
                                 .font(.caption)
                         }
@@ -538,6 +539,7 @@ struct PhotosGridView: View {
                         VStack {
                             Image(systemName: "photo.on.rectangle")
                                 .font(.title)
+                                .foregroundColor(Color.primaryGreen)
                             Text("Galería")
                                 .font(.caption)
                         }

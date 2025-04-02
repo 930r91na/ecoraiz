@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		06AC0D802D9DE67C00DDC0D6 /* ecoraiz.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 06AC0D7F2D9DE67C00DDC0D6 /* ecoraiz.mlmodel */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		48A155532D9BB98200051CDD /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,6 +28,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		06AC0D7F2D9DE67C00DDC0D6 /* ecoraiz.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = ecoraiz.mlmodel; sourceTree = "<group>"; };
 		48A155452D9BB98100051CDD /* ecoraiz.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ecoraiz.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		48A155522D9BB98200051CDD /* ecoraizTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ecoraizTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		48A1555C2D9BB98200051CDD /* ecoraizUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ecoraizUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -75,6 +80,7 @@
 		48A1553C2D9BB98100051CDD = {
 			isa = PBXGroup;
 			children = (
+				06AC0D7F2D9DE67C00DDC0D6 /* ecoraiz.mlmodel */,
 				48A155472D9BB98100051CDD /* ecoraiz */,
 				48A155552D9BB98200051CDD /* ecoraizTests */,
 				48A1555F2D9BB98200051CDD /* ecoraizUITests */,
@@ -236,6 +242,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				06AC0D802D9DE67C00DDC0D6 /* ecoraiz.mlmodel in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

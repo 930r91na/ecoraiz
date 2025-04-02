@@ -91,15 +91,16 @@ struct HomeView: View {
             // Sheet content goes here
         }
         .sheet(isPresented: $showCreateObservationView) {
-            // This is where you'll present your CreateObservationView
-            
+            CreateObservationView()
+                    .onDisappear {
+                        showMenuBubble = false
+                    }
         }
         .sheet(isPresented: $showIdentifyPlantView) {
-            // This is where you'll present your IdentifyPlantView
-            Text("Identificar Planta Invasora View")
-                .onDisappear {
-                    showMenuBubble = false
-                }
+            IdentifyPlantView()
+                    .onDisappear {
+                        showMenuBubble = false
+                    }
         }
         .onChange(of: searchText) { newValue in
             if !newValue.isEmpty {

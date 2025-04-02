@@ -10,21 +10,21 @@ struct NavigationBar: View {
             CommunityView()
                 .tabItem {
                     Image(systemName: "person.3.sequence.fill")
-                    Text("Community")
+                    Text("Comunidad")
                 }
                 .tag(0)
             
             HomeView()
                 .tabItem {
                     Image(systemName: "leaf.fill")
-                    Text("Home")
+                    Text("Inicio")
                 }
                 .tag(1)
             
             ProfileView(user: users.first!)
                 .tabItem {
                     Image(systemName: "person.fill")
-                    Text("Profile")
+                    Text("Perfil")
                 }
                 .tag(2)
         }
