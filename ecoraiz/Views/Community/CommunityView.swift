@@ -2,6 +2,7 @@ import SwiftUI
 
 // --- Vista Principal ---
 struct CommunityView: View {
+    @State private var showingSheet = false
     
     // --- Estado para el filtro seleccionado ---
     @State private var selectedCategory: String = "All"
@@ -45,15 +46,48 @@ struct CommunityView: View {
                 // Botón estándar en la barra de navegación
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
-                        // Acción para añadir evento
-                        print("Add event tapped")
+                        showingSheet.toggle()
                     } label: {
                         Image(systemName: "plus") // Icono estándar de iOS (SF Symbol)
                     }
                 }
             }
+            .sheet(isPresented: $showingSheet) {
+                CreateEventView(showingSheet: $showingSheet) // Pasa showingSheet aquí
+            }
             // Cambia el estilo de la barra de navegación si prefieres el título inline
             // .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+}
+
+// -- Vista para crear un nuevo evento --
+struct CreateEventView: View {
+    @Binding var showingSheet: Bool // Recibe showingSheet como un Binding
+    @State private var eventName = ""
+    @State private var date = Date()
+    @State private var location = ""
+    @State private var maxParticipants = 20
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Detalles del Evento")) {
+                    TextField("Nombre del evento", text: $eventName)
+                    DatePicker("Fecha", selection: $date, displayedComponents: [.date, .hourAndMinute])
+                    TextField("Ubicación", text: $location)
+                    Stepper("Máximo de participantes: \(maxParticipants)", value: $maxParticipants, in: 1...100)
+                }
+            }
+            .navigationTitle("Crear Evento")
+            .navigationBarItems(
+                leading: Button("Cancelar") {
+                    showingSheet = false // Cierra la hoja al tocar "Cancelar"
+                },
+                trailing: Button("Crear") {
+                    // Acción para crear el evento
+                }
+            )
         }
     }
 }
