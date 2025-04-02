@@ -1,6 +1,14 @@
 import Foundation
 import SwiftUI
 
+
+let invasivePlants = [
+    InvasivePlant(id: "1", name: "Lirio acuático", scientificName: "Eichhornia crassipes", distance: 0.5, severity: .high, imageURL: "lirio_acuatico"),
+    InvasivePlant(id: "2", name: "Muérdago", scientificName: "Psittacanthus calyculatus", distance: 1.2, severity: .medium, imageURL: "muerdago"),
+    InvasivePlant(id: "3", name: "Caña común", scientificName: "Arundo donax", distance: 2.3, severity: .low, imageURL: "cana_comun")
+]
+
+
 func generateExampleUsers() -> [User] {
     let usersInfo = [
         (name: "Georgina Zeron", bio: "I love capybaras", email: "capybaraissocool@example.com"),

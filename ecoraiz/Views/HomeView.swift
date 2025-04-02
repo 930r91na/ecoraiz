@@ -1,6 +1,7 @@
 import SwiftUI
 import MapKit
 
+
 struct HomeView: View {
     // MARK: - Properties
     @EnvironmentObject private var vm: LocationsViewModel
@@ -10,9 +11,13 @@ struct HomeView: View {
     @FocusState private var isSearchFocused: Bool
     @State private var currentLocationName: String = ""
     @State private var previousCenter: CLLocationCoordinate2D?
+    @State private var sheetHeight: CGFloat = 180 // Initial half-open state
+    @State private var isDragging: Bool = false
     
     let maxWidthForIpad: CGFloat = 700
-    
+    let minHeight: CGFloat = 60
+    let maxHeight: CGFloat = 600
+        
     // MARK: - Body
     var body: some View {
         ZStack {
@@ -35,6 +40,9 @@ struct HomeView: View {
                 }
                 
                 Spacer()
+                
+                // Bottom draggable sheet
+                bottomSheet
             }
         }
         .sheet(item: $vm.sheetLocation, onDismiss: nil) { _ in
@@ -61,6 +69,86 @@ struct HomeView: View {
                 previousCenter = vm.mapRegion.center
             }
         }
+    }
+    
+    // MARK: - Bottom Sheet
+    private var bottomSheet: some View {
+        VStack(spacing: 0) {
+            // Handle
+            HStack {
+                Spacer()
+                RoundedRectangle(cornerRadius: 2.5)
+                    .fill(Color.gray.opacity(0.6))
+                    .frame(width: 40, height: 5)
+                Spacer()
+            }
+            .padding(.top, 12)
+            
+            // Header
+            HStack {
+                Text("Plantas Invasoras Cercanas")
+                    .font(.headline)
+                    .padding(.horizontal)
+                    .padding(.top, 5)
+                
+                Spacer()
+                
+                Text("\(invasivePlants.count)")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(width: 30, height: 30)
+                    .background(Circle().fill(Color.red))
+                    .padding(.horizontal)
+                    .padding(.top, 5)
+            }
+            
+            // Content
+            ScrollView {
+                VStack(spacing: 15) {
+                    ForEach(invasivePlants) { plant in
+                        PlantCardView(plant: plant)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.top, 10)
+                .padding(.bottom, 30)
+            }
+            .frame(maxHeight: sheetHeight) // Adjust for header height
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+        )
+        .frame(height: sheetHeight)
+        .frame(maxWidth: .infinity)
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    isDragging = true
+                    let newHeight = sheetHeight - value.translation.height
+                    
+                    // Limit height between min and max
+                    if newHeight > minHeight && newHeight < maxHeight {
+                        sheetHeight = newHeight
+                    }
+                }
+                .onEnded { value in
+                    isDragging = false
+                    let velocity = value.predictedEndLocation.y - value.location.y
+                    
+                    // Snap to positions based on velocity and position
+                    withAnimation(.spring()) {
+                        if velocity > 100 || sheetHeight < minHeight + (maxHeight - minHeight) / 2 {
+                            // Snap to minimum height
+                            sheetHeight = minHeight
+                        } else {
+                            // Snap to maximum height
+                            sheetHeight = maxHeight
+                        }
+                    }
+                }
+        )
+        .animation(isDragging ? nil : .spring(), value: sheetHeight)
     }
     
     // MARK: - Search Function
@@ -192,7 +280,7 @@ extension HomeView {
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
-        .background(.ultraThinMaterial)
+        .background(Color.white)
         .cornerRadius(10)
         .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
     }
@@ -248,9 +336,69 @@ extension HomeView {
                             vm.showNextLocation(location: location)
                             // Update the current location name when selecting from predefined locations
                             currentLocationName = location.name
+                            previousCenter = location.coordinates
                         }
                 }
             })
+    }
+}
+
+// MARK: - Plant Card View
+struct PlantCardView: View {
+    let plant: InvasivePlant
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Image placeholder
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.gray.opacity(0.2))
+                
+                Image(systemName: "leaf.fill")
+                    .font(.title)
+                    .foregroundColor(.green)
+            }
+            .frame(width: 80, height: 80)
+            
+            // Information
+            VStack(alignment: .leading, spacing: 4) {
+                Text(plant.name)
+                    .font(.headline)
+                
+                Text(plant.scientificName)
+                    .font(.subheadline)
+                    .italic()
+                    .foregroundColor(.secondary)
+                
+                HStack {
+                    // Severity indicator
+                    Text(plant.severity.rawValue)
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(plant.severity.color.opacity(0.2))
+                        .foregroundColor(plant.severity.color)
+                        .cornerRadius(4)
+                    
+                    Spacer()
+                    
+                    // Distance
+                    Text("\(String(format: "%.1f", plant.distance)) km")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            // Arrow
+            Image(systemName: "chevron.right")
+                .foregroundColor(.secondary)
+        }
+        .padding()
+        .background(Color.white)
+        .cornerRadius(12)
+        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
     }
 }
 
