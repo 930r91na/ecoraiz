@@ -53,7 +53,7 @@ struct ProfileView: View {
 
                 // --- Sección Species Tracked ---
                 VStack(alignment: .leading, spacing: 15) {
-                    Text("Species Tracked")
+                    Text("Especies Seguidas")
                         .font(.title3)
                         .fontWeight(.semibold)
                         .padding(.horizontal) // Padding solo al título
@@ -71,7 +71,7 @@ struct ProfileView: View {
 
                 // --- Sección Recent Events ---
                 VStack(alignment: .leading, spacing: 15) {
-                    Text("Recent Events")
+                    Text("Eventos Asistidos")
                         .font(.title3)
                         .fontWeight(.semibold)
                         .padding(.horizontal) // Padding solo al título

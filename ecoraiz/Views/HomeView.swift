@@ -57,7 +57,7 @@ struct HomeView: View {
                     HStack {
                         Spacer()
                         
-                        ZStack(alignment: .bottom) {
+                        ZStack(alignment: .bottomTrailing) {
                             // Menu bubble (appears when FAB is clicked)
                             if showMenuBubble {
                                 menuBubble
