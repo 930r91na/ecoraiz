@@ -1,6 +1,7 @@
 import SwiftUI
 import MapKit
 
+
 struct HomeView: View {
     // MARK: - Properties
     @EnvironmentObject private var vm: LocationsViewModel
@@ -13,6 +14,8 @@ struct HomeView: View {
     @State private var sheetHeight: CGFloat = 180 // Initial half-open state
     @State private var isDragging: Bool = false
     @State private var showCreateObservationView: Bool = false
+    @State private var showIdentifyPlantView: Bool = false
+    @State private var showMenuBubble: Bool = false
     
     let maxWidthForIpad: CGFloat = 700
     let minHeight: CGFloat = 60
@@ -53,21 +56,34 @@ struct HomeView: View {
                     Spacer()
                     HStack {
                         Spacer()
-                        Button(action: {
-                            showCreateObservationView = true
-                        }) {
-                            Image(systemName: "plus")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.white)
-                                .frame(width: fabSize, height: fabSize)
-                                .background(Color.primaryGreen)
-                                .clipShape(RoundedRectangle(cornerRadius: 16))
-                                .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)
+                        
+                        ZStack(alignment: .bottom) {
+                            // Menu bubble (appears when FAB is clicked)
+                            if showMenuBubble {
+                                menuBubble
+                                    .offset(y: -fabSize - 20) // Position above the FAB with some spacing
+                                    .transition(.opacity)
+                            }
+                            
+                            // FAB Button
+                            Button(action: {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showMenuBubble.toggle()
+                                }
+                            }) {
+                                Image(systemName: showMenuBubble ? "xmark" : "plus")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                                    .frame(width: fabSize, height: fabSize)
+                                    .background(Color.primaryGreen)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                                    .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)
+                            }
                         }
                         .padding(.trailing, 20)
                     }
-                    .padding(.bottom, sheetHeight + fabBottom) // Dynamic positioning based on sheet height
+                    .padding(.bottom, sheetHeight + fabBottom)
                 }
             }
         }
@@ -76,7 +92,14 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showCreateObservationView) {
             // This is where you'll present your CreateObservationView
-            CreateObservationView()
+            
+        }
+        .sheet(isPresented: $showIdentifyPlantView) {
+            // This is where you'll present your IdentifyPlantView
+            Text("Identificar Planta Invasora View")
+                .onDisappear {
+                    showMenuBubble = false
+                }
         }
         .onChange(of: searchText) { newValue in
             if !newValue.isEmpty {
@@ -99,6 +122,70 @@ struct HomeView: View {
                 previousCenter = vm.mapRegion.center
             }
         }
+    }
+    
+    // MARK: - Menu Bubble
+    private var menuBubble: some View {
+        VStack(spacing: 12) {
+            // Identify Invasive Plant Option
+            Button(action: {
+                showIdentifyPlantView = true
+                showMenuBubble = false
+            }) {
+                menuBubbleItem(
+                    iconName: "leaf.fill",
+                    title: "Identificar Planta Invasora",
+                    backgroundColor: Color.green.opacity(0.9)
+                )
+            }
+            
+            // New Observation Option
+            Button(action: {
+                showCreateObservationView = true
+                showMenuBubble = false
+            }) {
+                menuBubbleItem(
+                    iconName: "plus.viewfinder",
+                    title: "Nueva Observación",
+                    backgroundColor: Color.blue.opacity(0.9)
+                )
+            }
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
+        )
+        .frame(width: 250)
+    }
+    
+    // Helper for Menu Bubble items
+    private func menuBubbleItem(iconName: String, title: String, backgroundColor: Color) -> some View {
+        HStack(spacing: 12) {
+            // Icon
+            ZStack {
+                Circle()
+                    .fill(backgroundColor)
+                    .frame(width: 36, height: 36)
+                
+                Image(systemName: iconName)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white)
+            }
+            
+            // Title
+            Text(title)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
+            
+            Spacer()
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .contentShape(Rectangle())
     }
     
     // MARK: - Bottom Sheet
@@ -176,6 +263,13 @@ struct HomeView: View {
                             sheetHeight = maxHeight
                         }
                     }
+                    
+                    // Hide menu bubble when sheet is dragged
+                    if showMenuBubble {
+                        withAnimation {
+                            showMenuBubble = false
+                        }
+                    }
                 }
         )
         .animation(isDragging ? nil : .spring(), value: sheetHeight)
@@ -240,7 +334,6 @@ struct HomeView: View {
         isSearchFocused = false
     }
 }
-
 // MARK: - View Components
 extension HomeView {
     private var header: some View {
