@@ -1,7 +1,6 @@
 import SwiftUI
 import MapKit
 
-
 struct HomeView: View {
     // MARK: - Properties
     @EnvironmentObject private var vm: LocationsViewModel
@@ -13,11 +12,14 @@ struct HomeView: View {
     @State private var previousCenter: CLLocationCoordinate2D?
     @State private var sheetHeight: CGFloat = 180 // Initial half-open state
     @State private var isDragging: Bool = false
+    @State private var showCreateObservationView: Bool = false
     
     let maxWidthForIpad: CGFloat = 700
     let minHeight: CGFloat = 60
     let maxHeight: CGFloat = 600
-        
+    let fabSize: CGFloat = 56
+    let fabBottom: CGFloat = 20
+    
     // MARK: - Body
     var body: some View {
         ZStack {
@@ -44,9 +46,37 @@ struct HomeView: View {
                 // Bottom draggable sheet
                 bottomSheet
             }
+            
+            // Floating Action Button - conditionally shown based on sheet height
+            if sheetHeight < 300 {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            showCreateObservationView = true
+                        }) {
+                            Image(systemName: "plus")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .frame(width: fabSize, height: fabSize)
+                                .background(Color.primaryGreen)
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                                .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)
+                        }
+                        .padding(.trailing, 20)
+                    }
+                    .padding(.bottom, sheetHeight + fabBottom) // Dynamic positioning based on sheet height
+                }
+            }
         }
         .sheet(item: $vm.sheetLocation, onDismiss: nil) { _ in
             // Sheet content goes here
+        }
+        .sheet(isPresented: $showCreateObservationView) {
+            // This is where you'll present your CreateObservationView
+            CreateObservationView()
         }
         .onChange(of: searchText) { newValue in
             if !newValue.isEmpty {
@@ -343,6 +373,7 @@ extension HomeView {
     }
 }
 
+
 // MARK: - Plant Card View
 struct PlantCardView: View {
     let plant: InvasivePlant
@@ -356,7 +387,7 @@ struct PlantCardView: View {
                 
                 Image(systemName: "leaf.fill")
                     .font(.title)
-                    .foregroundColor(.green)
+                    .foregroundColor(Color.primaryGreen)
             }
             .frame(width: 80, height: 80)
             
