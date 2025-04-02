@@ -1,17 +1,14 @@
-//
-//  ecoraizApp.swift
-//  ecoraiz
-//
-//  Created by José Francisco Zerón Cabrera on 01/04/25.
-//
-
 import SwiftUI
+import MapKit
 
 @main
 struct ecoraizApp: App {
+    @StateObject private var vm = LocationsViewModel()
+    
     var body: some Scene {
         WindowGroup {
             NavigationBar()
+                .environmentObject(vm)
         }
     }
 }

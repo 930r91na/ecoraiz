@@ -29,9 +29,22 @@
 		48A1555C2D9BB98200051CDD /* ecoraizUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ecoraizUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		480A40122D9CF9C6003E73D1 /* Exceptions for "ecoraiz" folder in "ecoraiz" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 48A155442D9BB98100051CDD /* ecoraiz */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		48A155472D9BB98100051CDD /* ecoraiz */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				480A40122D9CF9C6003E73D1 /* Exceptions for "ecoraiz" folder in "ecoraiz" target */,
+			);
 			path = ecoraiz;
 			sourceTree = "<group>";
 		};
@@ -400,6 +413,9 @@
 				DEVELOPMENT_TEAM = W57T266FUF;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ecoraiz/Info.plist;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We need your location to show nearby invasive plant species and community report";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to show nearby invasive plant species and community reports";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -428,6 +444,9 @@
 				DEVELOPMENT_TEAM = W57T266FUF;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ecoraiz/Info.plist;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We need your location to show nearby invasive plant species and community report";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to show nearby invasive plant species and community reports";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
