@@ -2,13 +2,14 @@ import SwiftUI
 import MapKit
 
 struct HomeView: View {
-    
     // MARK: - Properties
     @EnvironmentObject private var vm: LocationsViewModel
     @State private var showSearchField: Bool = false
     @State private var searchText: String = ""
     @State private var searchResults: [MKMapItem] = []
     @FocusState private var isSearchFocused: Bool
+    @State private var currentLocationName: String = ""
+    @State private var previousCenter: CLLocationCoordinate2D?
     
     let maxWidthForIpad: CGFloat = 700
     
@@ -46,6 +47,20 @@ struct HomeView: View {
                 searchResults = []
             }
         }
+        .onAppear {
+            currentLocationName = vm.mapLocation.name
+            previousCenter = vm.mapRegion.center
+        }
+        // Use a timer to check for map region changes
+        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
+            // Only update if the center coordinates have changed significantly
+            if let previous = previousCenter,
+               abs(previous.latitude - vm.mapRegion.center.latitude) > 0.001 ||
+               abs(previous.longitude - vm.mapRegion.center.longitude) > 0.001 {
+                updateCurrentLocationName()
+                previousCenter = vm.mapRegion.center
+            }
+        }
     }
     
     // MARK: - Search Function
@@ -64,6 +79,28 @@ struct HomeView: View {
         }
     }
     
+    // MARK: - Update Current Location Name
+    private func updateCurrentLocationName() {
+        let geoCoder = CLGeocoder()
+        let location = CLLocation(latitude: vm.mapRegion.center.latitude,
+                                  longitude: vm.mapRegion.center.longitude)
+        
+        geoCoder.reverseGeocodeLocation(location) { placemarks, error in
+            guard let placemark = placemarks?.first, error == nil else {
+                return
+            }
+            
+            // Choose the most appropriate name for the location
+            if let name = placemark.name {
+                self.currentLocationName = name
+            } else if let locality = placemark.locality {
+                self.currentLocationName = locality
+            } else if let area = placemark.administrativeArea {
+                self.currentLocationName = area
+            }
+        }
+    }
+    
     // MARK: - Navigation to Selected Location
     private func navigateToLocation(_ mapItem: MKMapItem) {
         let coordinate = mapItem.placemark.coordinate
@@ -72,7 +109,14 @@ struct HomeView: View {
             span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
         )
         
+        // Set the new location name
+        self.currentLocationName = mapItem.name ?? "Location"
+        
+        // Update the map region
         vm.mapRegion = newRegion
+        previousCenter = coordinate
+        
+        // Reset the search UI
         showSearchField = false
         searchText = ""
         isSearchFocused = false
@@ -118,7 +162,7 @@ extension HomeView {
                         showSearchField = true
                     }
                 }) {
-                    Text(vm.mapLocation.name)
+                    Text(currentLocationName)
                         .font(.headline)
                         .fontWeight(.medium)
                         .foregroundColor(.primary)
@@ -189,7 +233,7 @@ extension HomeView {
             }
             .padding(.vertical, 5)
         }
-        .frame(maxHeight: 300)
+        .frame(maxHeight: min(CGFloat(searchResults.count * 60 + 10), 300))
     }
     
     private var mapLayer: some View {
@@ -202,6 +246,8 @@ extension HomeView {
                         .shadow(radius: 10)
                         .onTapGesture {
                             vm.showNextLocation(location: location)
+                            // Update the current location name when selecting from predefined locations
+                            currentLocationName = location.name
                         }
                 }
             })
