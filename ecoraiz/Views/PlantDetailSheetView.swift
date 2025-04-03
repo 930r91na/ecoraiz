@@ -96,7 +96,11 @@ struct PlantImageSection: View {
             // Full-width plant image with gradient overlay
             ZStack(alignment: .bottom) {
                 // Plant image
-               
+                
+                plant.imageURL
+                        .resizable()
+                        .scaledToFit()
+                        .cornerRadius(20)
                 
                 // Gradient overlay at the bottom
                 VStack(alignment: .leading, spacing: 4) {

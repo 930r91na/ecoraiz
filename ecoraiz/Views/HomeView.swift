@@ -241,6 +241,7 @@ struct HomeView: View {
                     .background(Circle().fill(
                         vm.nearbyInvasiveObservations.isEmpty ? Color.gray : Color.red
                     ))
+                    .padding()
             }
                 ScrollView {
                     VStack(spacing: 15) {
@@ -385,7 +386,7 @@ struct ObservationMapAnnotationView: View {
                 .scaledToFit()
                 .frame(width: 30, height: 30)
                 .font(.headline)
-                .foregroundColor(.green)
+                .foregroundColor(.primaryGreen)
                 .padding(6)
                 .background(Color(uiColor: .systemBackground).opacity(0.7))
                 .clipShape(Circle())
@@ -393,7 +394,7 @@ struct ObservationMapAnnotationView: View {
             Image(systemName: "triangle.fill")
                 .resizable()
                 .scaledToFit()
-                .foregroundColor(.green)
+                .foregroundColor(.primaryGreen)
                 .frame(width: 10, height: 10)
                 .rotationEffect(Angle(degrees: 180))
                 .offset(y: -2)
@@ -703,17 +704,6 @@ struct ObservationCardView: View {
                         .foregroundColor(.secondary)
                         
                         Spacer()
-                        
-                        // Show if plant is in our database with a tag
-                        if matchingPlantDetails != nil {
-                            Text("En Base de Datos")
-                                .font(.caption)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.green.opacity(0.2))
-                                .foregroundColor(.green)
-                                .cornerRadius(4)
-                        }
                     }
                     
                     // Location if available
