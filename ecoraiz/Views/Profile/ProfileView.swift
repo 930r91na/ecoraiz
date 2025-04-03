@@ -24,7 +24,7 @@ struct ProfileView: View {
                  title: "Limpieza Río Atoyac (Asistido)",
                  dateTime: "Dom, 23 Feb • 8:30 AM", // Fecha pasada
                  location: "Puente de México, Puebla",
-                 imageName: "gardener", // Reusa o cambia URL
+                 imageName: "cleaning", // Reusa o cambia URL
                  status: "Completado",
                  statusColor: .blue, // Otro color para completado
                  organizerName: "Miguel Ángel Ruiz",
