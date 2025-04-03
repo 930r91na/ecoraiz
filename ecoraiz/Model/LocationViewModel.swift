@@ -44,6 +44,27 @@ class LocationsViewModel: ObservableObject {
         setupLocationSubscription()
     }
 
+    
+    var orderedNearbyObservations: [Observation] {
+        guard let selected = selectedObservationForDetail,
+              let selectedCoordinate = selected.coordinate else {
+            return nearbyInvasiveObservations
+        }
+        
+        let selectedLocation = CLLocation(latitude: selectedCoordinate.latitude, longitude: selectedCoordinate.longitude)
+        
+        return nearbyInvasiveObservations.sorted { obs1, obs2 in
+            guard let coordinate1 = obs1.coordinate,
+                  let coordinate2 = obs2.coordinate else {
+                return false
+            }
+            let location1 = CLLocation(latitude: coordinate1.latitude, longitude: coordinate1.longitude)
+            let location2 = CLLocation(latitude: coordinate2.latitude, longitude: coordinate2.longitude)
+            
+            return location1.distance(from: selectedLocation) < location2.distance(from: selectedLocation)
+        }
+    }
+
     // MARK: - Configuración de Subscripciones
 
     /// Configura la suscripción al estado de autorización y a la ubicación.
@@ -153,6 +174,12 @@ class LocationsViewModel: ObservableObject {
                 }
             }
         }
+        
+        // En Model/LocationsViewModel.swift (DENTRO de la clase LocationsViewModel)
+
+            // --- NUEVA Propiedad Computada ---
+            // Devuelve las observaciones cercanas, con la seleccionada al principio
+            
     }
 
     // MARK: - Funciones Auxiliares

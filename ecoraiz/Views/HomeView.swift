@@ -245,7 +245,7 @@ struct HomeView: View {
             }
                 ScrollView {
                     VStack(spacing: 15) {
-                        ForEach(vm.nearbyInvasiveObservations) { observation in
+                        ForEach(vm.orderedNearbyObservations) { observation in
                             ObservationCardView(observation: observation)
                         }
                     }
