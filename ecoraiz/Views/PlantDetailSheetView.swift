@@ -2,7 +2,7 @@ import SwiftUI
 
 struct PlantDetailSheet: View {
     @Environment(\.dismiss) var dismiss
-    let plant: InvasivePlant
+    let plant: PlantDetails
     @State private var isBookmarked: Bool = false
     
     var body: some View {
@@ -47,7 +47,7 @@ struct PlantDetailSheet: View {
 }
 
 struct PlantHeaderView: View {
-    let plant: InvasivePlant
+    let plant: PlantDetails
     @Binding var isBookmarked: Bool
     let dismissAction: () -> Void
     
@@ -89,18 +89,14 @@ struct PlantHeaderView: View {
 }
 
 struct PlantImageSection: View {
-    let plant: InvasivePlant
+    let plant: PlantDetails
     
     var body: some View {
         VStack(alignment: .center, spacing: 16) {
             // Full-width plant image with gradient overlay
             ZStack(alignment: .bottom) {
                 // Plant image
-                plant.imageURL
-                    .resizable()
-                    .scaledToFit()
-                    .cornerRadius(20)
-                    
+               
                 
                 // Gradient overlay at the bottom
                 VStack(alignment: .leading, spacing: 4) {
@@ -111,7 +107,7 @@ struct PlantImageSection: View {
                         .foregroundColor(.white.opacity(0.9))
                     
                     // Severity level
-                    Text("Nivel \(plant.severity.rawValue)")
+                    Text("Nivel \(plant.invasiveLevel.rawValue)")
                         .font(.system(size: 18, weight: .bold))
                         .foregroundColor(.white)
                 }
@@ -122,9 +118,9 @@ struct PlantImageSection: View {
                     LinearGradient(
                         gradient: Gradient(
                             colors: [
-                                plant.severity.color.opacity(0.9),
-                                plant.severity.color.opacity(0.7),
-                                plant.severity.color.opacity(0)
+                                plant.invasiveLevel.color.opacity(0.9),
+                                plant.invasiveLevel.color.opacity(0.7),
+                                plant.invasiveLevel.color.opacity(0)
                             ]
                         ),
                         startPoint: .bottom,
@@ -134,21 +130,7 @@ struct PlantImageSection: View {
                 .cornerRadius(20, corners: [.bottomLeft, .bottomRight])
             }
             .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
-            
-            // Accuracy indicator (if available)
-            if let accuracy = plant.accuracyDetection {
-                HStack(spacing: 6) {
-                    Image(systemName: "checkmark.shield.fill")
-                        .foregroundColor(.primaryGreen)
-                        .font(.system(size: 14))
-                    
-                    Text("Precisión de la detección: \(Int(accuracy * 100))%")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.black)
-                }
-                .padding(.top, 6)
-                .padding(.bottom, 2)
-            }
+        
         }
         .padding(.horizontal, 2)
     }
@@ -176,7 +158,7 @@ struct RoundedCorner: Shape {
 }
 
 struct PlantProblemSection: View {
-    let plant: InvasivePlant
+    let plant: PlantDetails
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -217,7 +199,7 @@ struct PlantProblemSection: View {
 }
 
 struct PlantAlternativeUsesSection: View {
-    let plant: InvasivePlant
+    let plant: PlantDetails
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -275,7 +257,7 @@ struct PlantAlternativeUsesSection: View {
 }
 
 struct PlantEliminationSection: View {
-    let plant: InvasivePlant
+    let plant: PlantDetails
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {

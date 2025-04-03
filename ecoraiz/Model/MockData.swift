@@ -68,6 +68,7 @@ let plantDatabase: [String: PlantDetails] = [
     "Castor_Bean_Images": PlantDetails(
         name: "Castor Tartágo",
         scientificName: "Ricinus communis",
+        taxonId: 56739,
         invasiveLevel: .high,
         description: "Planta de crecimiento rápido con hojas grandes en forma de palma y semillas tóxicas.",
         controlMethods: ["Extracción manual con guantes", "Corte antes de la floración", "Aplicación localizada de herbicidas"],
@@ -86,6 +87,7 @@ let plantDatabase: [String: PlantDetails] = [
     "Water_Hyacinth_Images": PlantDetails(
         name: "Lirio acuático",
         scientificName: "Eichhornia crassipes",
+        taxonId: 962637,
         invasiveLevel: .extreme,
         description: "Planta acuática flotante con flores moradas y bulbos inflados.",
         controlMethods: ["Extracción mecánica", "Control biológico", "Tratamiento químico controlado"],
@@ -104,6 +106,7 @@ let plantDatabase: [String: PlantDetails] = [
     "Chinaberry_Images": PlantDetails(
         name: "Cinamomo",
         scientificName: "Melia azedarach",
+        taxonId: 53720,
         invasiveLevel: .high,
         description: "Árbol de crecimiento rápido con hojas compuestas y bayas venenosas.",
         controlMethods: ["Tala y remoción de tocones", "Aplicación de herbicidas", "Control de semillas"],
@@ -121,6 +124,7 @@ let plantDatabase: [String: PlantDetails] = [
     "Giant_Reed_Images": PlantDetails(
         name: "Caña común",
         scientificName: "Arundo donax",
+        taxonId: 64017,
         invasiveLevel: .extreme,
         description: "Gramínea gigante de crecimiento rápido que puede alcanzar varios metros de altura.",
         controlMethods: ["Remoción mecánica", "Aplicación de herbicidas", "Control de rizomas"],
@@ -140,6 +144,7 @@ let plantDatabase: [String: PlantDetails] = [
     "Mother_of_Thousands_Images": PlantDetails(
         name: "Madre de miles",
         scientificName: "Kalanchoe daigremontiana",
+        taxonId: 164327,
         invasiveLevel: .medium,
         description: "Suculenta con pequeñas plantulas que se desarrollan en los bordes de las hojas.",
         controlMethods: ["Extracción manual", "Evitar propagación", "Control de suelo"],

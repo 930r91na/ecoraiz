@@ -39,6 +39,7 @@ struct InvasivePlant: Identifiable {
 struct PlantDetails {
     let name: String
     let scientificName: String
+    let taxonId: Int?
     let invasiveLevel: InvasiveLevel
     let description: String
     let controlMethods: [String]

@@ -242,17 +242,10 @@ struct HomeView: View {
                         vm.nearbyInvasiveObservations.isEmpty ? Color.gray : Color.red
                     ))
             }
-            
-            // Content
-            if let observation = vm.selectedObservationForDetail {
-                // Vista de detalle
-                ObservationDetailSheetView(observation: observation)
-                    .padding(.top, 5)
-            } else {
                 ScrollView {
                     VStack(spacing: 15) {
-                        ForEach(invasivePlants) { plant in
-                            PlantCardView(plant: plant)
+                        ForEach(vm.nearbyInvasiveObservations) { observation in
+                            ObservationCardView(observation: observation)
                         }
                     }
                     .padding(.horizontal)
@@ -261,7 +254,7 @@ struct HomeView: View {
                 }
                 .frame(maxHeight: sheetHeight) // Adjust for header height
 
-            }
+            
         }
         .background(
             RoundedRectangle(cornerRadius: 16)
@@ -633,53 +626,106 @@ extension HomeView {
 
 
 struct ObservationCardView: View {
-    let plant: InvasivePlant
+    let observation: Observation
     @State private var showPlantDetail: Bool = false
+    
+    // This property will look up plant details from the taxon ID
+    private var matchingPlantDetails: PlantDetails? {
+        guard let taxonId = observation.taxon?.id else { return nil }
+        
+        // Look through plantDatabase to find matching taxonId
+        return plantDatabase.values.first(where: { $0.taxonId == taxonId })
+    }
     
     var body: some View {
         Button(action: {
             showPlantDetail = true
         }) {
             HStack(spacing: 12) {
-                // Image placeholder
+                // Image from observation
                 ZStack {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color.gray.opacity(0.2))
                     
-                    plant.imageURL
-                        .resizable()
-                        .scaledToFit()
-                        
+                    if let imageURLString = observation.photos?.first?.url?.replacingOccurrences(of: "square", with: "medium"),
+                       let imageURL = URL(string: imageURLString) {
+                        AsyncImage(url: imageURL) { phase in
+                            switch phase {
+                            case .empty:
+                                ProgressView()
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .scaledToFit()
+                            case .failure:
+                                Image(systemName: "photo.on.rectangle.angled")
+                                    .foregroundColor(.secondary)
+                            @unknown default:
+                                EmptyView()
+                            }
+                        }
+                    } else {
+                        Image(systemName: "leaf.fill")
+                            .font(.largeTitle)
+                            .foregroundColor(.green.opacity(0.6))
+                    }
                 }
                 .frame(width: 80, height: 80)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
                 
                 // Information
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(plant.name)
+                    Text(observation.taxon?.preferredCommonName?.capitalized
+                         ?? observation.taxon?.name
+                         ?? observation.speciesGuess?.capitalized
+                         ?? "Observación \(observation.id)")
                         .font(.headline)
                         .foregroundColor(.primary)
+                        .lineLimit(1)
                     
-                    Text(plant.scientificName)
-                        .font(.subheadline)
-                        .italic()
-                        .foregroundColor(.secondary)
+                    if let scientificName = observation.taxon?.name,
+                       scientificName != observation.taxon?.preferredCommonName {
+                        Text(scientificName)
+                            .font(.subheadline)
+                            .italic()
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
                     
                     HStack {
-                        // Severity indicator
-                        Text(plant.severity.rawValue)
-                            .font(.caption)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(plant.severity.color.opacity(0.2))
-                            .foregroundColor(plant.severity.color)
-                            .cornerRadius(4)
+                        // Date indicator
+                        HStack(spacing: 2) {
+                            Image(systemName: "calendar")
+                                .font(.caption2)
+                            Text(formatDateString(observation.observedOnString))
+                                .font(.caption)
+                        }
+                        .foregroundColor(.secondary)
                         
                         Spacer()
                         
-                        // Distance
-                        Text("\(String(format: "%.1f", plant.distance ?? 1)) km")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        // Show if plant is in our database with a tag
+                        if matchingPlantDetails != nil {
+                            Text("En Base de Datos")
+                                .font(.caption)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.green.opacity(0.2))
+                                .foregroundColor(.green)
+                                .cornerRadius(4)
+                        }
+                    }
+                    
+                    // Location if available
+                    if let placeGuess = observation.placeGuess, !placeGuess.isEmpty {
+                        HStack(spacing: 2) {
+                            Image(systemName: "mappin.circle.fill")
+                                .font(.caption2)
+                            Text(placeGuess)
+                                .lineLimit(1)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
                 
@@ -694,10 +740,22 @@ struct ObservationCardView: View {
             .cornerRadius(12)
             .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
         }
-        .buttonStyle(PlainButtonStyle()) // Ensures the button doesn't have default button styling
+        .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showPlantDetail) {
-            PlantDetailSheet(plant: plant)
+            if let plantDetails = matchingPlantDetails {
+                // Show the PlantDetailSheet with the matching plant details
+                PlantDetailSheet(plant: plantDetails)
+            } else {
+                // Fallback to observation detail if no matching plant
+                ObservationDetailSheetView(observation: observation)
+            }
         }
+    }
+    
+    // Helper function to format the date string
+    private func formatDateString(_ dateString: String?) -> String {
+        guard let ds = dateString else { return "N/A" }
+        return ds
     }
 }
 
@@ -726,76 +784,6 @@ struct LocationMapAnnotationView: View {
     }
 }
 
-
-// MARK: - Plant Card View
-struct PlantCardView: View {
-    let plant: InvasivePlant
-    @State private var showPlantDetail: Bool = false
-    
-    var body: some View {
-        Button(action: {
-            showPlantDetail = true
-        }) {
-            HStack(spacing: 12) {
-                // Image placeholder
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.gray.opacity(0.2))
-                    
-                    plant.imageURL
-                        .resizable()
-                        .scaledToFit()
-                        
-                }
-                .frame(width: 80, height: 80)
-                
-                // Information
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(plant.name)
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    
-                    Text(plant.scientificName)
-                        .font(.subheadline)
-                        .italic()
-                        .foregroundColor(.secondary)
-                    
-                    HStack {
-                        // Severity indicator
-                        Text(plant.severity.rawValue)
-                            .font(.caption)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(plant.severity.color.opacity(0.2))
-                            .foregroundColor(plant.severity.color)
-                            .cornerRadius(4)
-                        
-                        Spacer()
-                        
-                        // Distance
-                        Text("\(String(format: "%.1f", plant.distance ?? 1)) km")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                Spacer()
-                
-                // Arrow
-                Image(systemName: "chevron.right")
-                    .foregroundColor(.secondary)
-            }
-            .padding()
-            .background(Color.white)
-            .cornerRadius(12)
-            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-        }
-        .buttonStyle(PlainButtonStyle()) // Ensures the button doesn't have default button styling
-        .sheet(isPresented: $showPlantDetail) {
-            PlantDetailSheet(plant: plant)
-        }
-    }
-}
 
 #Preview {
     HomeView()
