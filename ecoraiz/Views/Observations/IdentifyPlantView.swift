@@ -388,7 +388,7 @@ struct IdentifyPlantView: View {
                 scientificName: "Eichhornia crassipes",
                 distance: nil,
                 severity: .high,
-                imageURL: "",
+                imageURL: Image("lili"),
                 accuracyDetection: 0.94,
                 problem: "Bloquea la luz del agua, reduce el oxígeno y afecta la fauna acuática.",
                 alternativeUses: [
@@ -407,7 +407,7 @@ struct IdentifyPlantView: View {
                 scientificName: "Arundo donax",
                 distance: nil,
                 severity: .medium,
-                imageURL: "",
+                imageURL: Image("reed"),
                 accuracyDetection: 0.76,
                 problem: "Crece rápidamente en ríos y arroyos, desplazando especies nativas.",
                 alternativeUses: [
@@ -427,7 +427,7 @@ struct IdentifyPlantView: View {
                 scientificName: "Kalanchoe daigremontiana",
                 distance: nil,
                 severity: .low,
-                imageURL: "",
+                imageURL: Image("madre"),
                 accuracyDetection: 0.62,
                 problem: "Se reproduce muy rápido, cada hoja produce nuevas plántulas.",
                 alternativeUses: [
@@ -525,7 +525,7 @@ struct IdentifyPlantView: View {
             scientificName: result.details?.scientificName ?? "Desconocido",
             distance: nil,
             severity: severity,
-            imageURL: "",
+            imageURL: Image(systemName: "questionmark.circle.dashed"),
             accuracyDetection: Double(result.confidence), problem: nil,
             alternativeUses: [], eliminationMethods: []
             
@@ -563,7 +563,7 @@ struct IdentifyPlantView: View {
                     scientificName: scientificName,
                     distance: nil,
                     severity: severity,
-                    imageURL: "",
+                    imageURL: Image(systemName: "questionmark.circle.dashed"),
                     accuracyDetection: confidence,
                     problem: nil,
                     alternativeUses: nil,

@@ -471,59 +471,70 @@ extension HomeView {
 // MARK: - Plant Card View
 struct PlantCardView: View {
     let plant: InvasivePlant
+    @State private var showPlantDetail: Bool = false
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Image placeholder
-            ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.gray.opacity(0.2))
-                
-                Image(systemName: "leaf.fill")
-                    .font(.title)
-                    .foregroundColor(Color.primaryGreen)
-            }
-            .frame(width: 80, height: 80)
-            
-            // Information
-            VStack(alignment: .leading, spacing: 4) {
-                Text(plant.name)
-                    .font(.headline)
-                
-                Text(plant.scientificName)
-                    .font(.subheadline)
-                    .italic()
-                    .foregroundColor(.secondary)
-                
-                HStack {
-                    // Severity indicator
-                    Text(plant.severity.rawValue)
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(plant.severity.color.opacity(0.2))
-                        .foregroundColor(plant.severity.color)
-                        .cornerRadius(4)
+        Button(action: {
+            showPlantDetail = true
+        }) {
+            HStack(spacing: 12) {
+                // Image placeholder
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.gray.opacity(0.2))
                     
-                    Spacer()
-                    
-                    // Distance
-                    Text("\(String(format: "%.1f", plant.distance ?? 1)) km")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    plant.imageURL
+                        .resizable()
+                        .scaledToFit()
+                        
                 }
+                .frame(width: 80, height: 80)
+                
+                // Information
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(plant.name)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    Text(plant.scientificName)
+                        .font(.subheadline)
+                        .italic()
+                        .foregroundColor(.secondary)
+                    
+                    HStack {
+                        // Severity indicator
+                        Text(plant.severity.rawValue)
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(plant.severity.color.opacity(0.2))
+                            .foregroundColor(plant.severity.color)
+                            .cornerRadius(4)
+                        
+                        Spacer()
+                        
+                        // Distance
+                        Text("\(String(format: "%.1f", plant.distance ?? 1)) km")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Spacer()
+                
+                // Arrow
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.secondary)
             }
-            
-            Spacer()
-            
-            // Arrow
-            Image(systemName: "chevron.right")
-                .foregroundColor(.secondary)
+            .padding()
+            .background(Color.white)
+            .cornerRadius(12)
+            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
         }
-        .padding()
-        .background(Color.white)
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+        .buttonStyle(PlainButtonStyle()) // Ensures the button doesn't have default button styling
+        .sheet(isPresented: $showPlantDetail) {
+            PlantDetailSheet(plant: plant)
+        }
     }
 }
 

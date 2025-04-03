@@ -9,7 +9,7 @@ let invasivePlants = [
         scientificName: "Eichhornia crassipes",
         distance: 0.5,
         severity: .extreme,
-        imageURL: "lirio_acuatico",
+        imageURL: Image("lili"),
         accuracyDetection: nil,
         problem: "Bloquea la luz del agua, reduce el oxígeno y afecta la fauna acuática.",
         alternativeUses: [
@@ -28,7 +28,7 @@ let invasivePlants = [
         scientificName: "Psittacanthus calyculatus",
         distance: 1.2,
         severity: .medium,
-        imageURL: "muerdago",
+        imageURL: Image("muerdago"),
         accuracyDetection: nil,
         problem: "Parásito que debilita árboles nativos y ornamentales, causando su muerte prematura.",
         alternativeUses: [
@@ -47,7 +47,7 @@ let invasivePlants = [
         scientificName: "Arundo donax",
         distance: 2.3,
         severity: .extreme,
-        imageURL: "cana_comun",
+        imageURL: Image("reed"),
         accuracyDetection: nil,
         problem: "Crece rápidamente en ríos y arroyos, desplazando especies nativas.",
         alternativeUses: [
@@ -171,3 +171,73 @@ func generateExampleUsers() -> [User] {
     return users
 }
 let exampleUsers = generateExampleUsers()
+
+
+let communityEvents: [CommunityEvent] = [
+    CommunityEvent(
+        title: "Taller de Identificación de Plantas Invasoras",
+        dateTime: "Sáb, 15 Mayo • 10:00 AM",
+        location: "Jardín Botánico de Puebla",
+        imageName: "https://images.unsplash.com/photo-1520302630591-fd1c66edc19d?q=80&w=600",
+        status: "Casi Lleno",
+        statusColor: .mustardYellow,
+        organizerName: "Dra. Carmen Vázquez",
+        organizerAvatar: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=200",
+        attendeeCount: 18
+    ),
+    CommunityEvent(
+        title: "Limpieza del Río Atoyac",
+        dateTime: "Dom, 23 Mayo • 8:30 AM",
+        location: "Puente de México, Puebla",
+        imageName: "https://images.unsplash.com/photo-1618477202872-5b315d5e3f5e?q=80&w=600",
+        status: "Abierto",
+        statusColor: .primaryGreen,
+        organizerName: "Miguel Ángel Ruiz",
+        organizerAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200",
+        attendeeCount: 35
+    ),
+    CommunityEvent(
+        title: "Reforestación en Cholula",
+        dateTime: "Próx. Semana, 9:00 AM",
+        location: "Cerro Zapotecas",
+        imageName: "https://images.unsplash.com/photo-1513028894576-c25f77af458d?q=80&w=600",
+        status: "Limitado",
+        statusColor: .orange,
+        organizerName: "Laura Méndez",
+        organizerAvatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=200",
+        attendeeCount: 25
+    ),
+    CommunityEvent(
+        title: "Seminario: Especies Invasoras y Biodiversidad",
+        dateTime: "Jue, 27 Mayo • 5:00 PM",
+        location: "Universidad Autónoma de Puebla",
+        imageName: "https://images.unsplash.com/photo-1593359863503-f598684c806f?q=80&w=600",
+        status: "Gratuito",
+        statusColor: .primaryGreen,
+        organizerName: "Dr. Javier Morales",
+        organizerAvatar: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?q=80&w=200",
+        attendeeCount: 50
+    ),
+    CommunityEvent(
+        title: "Monitoreo de Aves - Parque Ecológico",
+        dateTime: "Sáb, 5 Junio • 7:00 AM",
+        location: "Africam Safari, Puebla",
+        imageName: "https://images.unsplash.com/photo-1621331938577-5482896bbc8f?q=80&w=600",
+        status: "Pocos Lugares",
+        statusColor: .opaqueRed,
+        organizerName: "Elena Cortés",
+        organizerAvatar: "https://images.unsplash.com/photo-1581403341630-a6e0b9d2d257?q=80&w=200",
+        attendeeCount: 12
+    ),
+    CommunityEvent(
+        title: "Feria Ambiental de Atlixco",
+        dateTime: "Dom, 13 Junio • 11:00 AM",
+        location: "Zócalo de Atlixco",
+        imageName: "https://images.unsplash.com/photo-1523741543316-beb7fc7023d8?q=80&w=600",
+        status: "Abierto",
+        statusColor: .primaryGreen,
+        organizerName: "Ayuntamiento de Atlixco",
+        organizerAvatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200",
+        attendeeCount: 120
+    )
+]

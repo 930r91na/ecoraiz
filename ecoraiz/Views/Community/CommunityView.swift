@@ -4,24 +4,12 @@ import SwiftUI
 struct CommunityView: View {
     @State private var showingSheet = false // Para mostrar la hoja de creación
     
-    // --- Estado para el filtro seleccionado ---
-    @State private var selectedCategory: String = "All"
-    let categories = ["All", "Indoor Plants", "Outdoor Gardens"]
-    
     // --- ESTADO PARA LAS OBSERVACIONES DESTACADAS (desde la API) ---
     @State private var featuredObservations: [FeaturedEvent] = [] // Renombrado para claridad
     
     // --- ESTADO PARA LA CARGA ---
     @State private var isLoadingFeatured = false // Para controlar el ProgressView
     @State private var featuredLoadError: Error? = nil // Para manejar errores (opcional)
-    
-    
-    // --- Datos de Ejemplo para Eventos Comunitarios (se mantienen igual) ---
-    let communityEvents: [CommunityEvent] = [
-        CommunityEvent(title: "UX Design Meetup", dateTime: "Sat, Feb 15 • 6:30 PM", location: "Creative Hub", imageName: "ux_meetup", status: "Almost Full", statusColor: .orange, organizerName: "David Wilson", organizerAvatar: "avatar_david", attendeeCount: 22),
-        CommunityEvent(title: "Tech Startup Networking", dateTime: "Next Week, 7:00 PM", location: "Innovation Center", imageName: "tech_networking", status: "Open", statusColor: .green, organizerName: "Emily Darker", organizerAvatar: "avatar_emily", attendeeCount: 30)
-        // Añade más eventos comunitarios si es necesario
-    ]
     
     var body: some View {
         NavigationView {
@@ -60,18 +48,19 @@ struct CommunityView: View {
                         }
                     } // Fin VStack Sección Observaciones
                     
-                    
-                    // --- Sección de Filtros (sin cambios) ---
-                    FilterSection(selectedCategory: $selectedCategory, categories: categories)
+                
+                    Text("Eventos cerca de ti")
+                        .fontWeight(.bold)
                         .padding(.horizontal)
-                    
+                        .padding(.bottom, 5)
+                        .font(.title2)
                     // --- Sección de Lista de Eventos Comunitarios (sin cambios) ---
                     EventsListSection(events: communityEvents)
                         .padding(.horizontal)
                     
                 } // Fin VStack principal
             } // Fin ScrollView
-            .navigationTitle("Plant Community")
+            .navigationTitle("Comunidad")
             .toolbar {
                 // Botón para añadir evento (vuelve a usar showingSheet)
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -285,38 +274,6 @@ struct CommunityView: View {
         }
     }
     
-    // --- Subvista: Sección de Filtros ---
-    struct FilterSection: View {
-        @Binding var selectedCategory: String
-        let categories: [String]
-        
-        var body: some View {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(categories, id: \.self) { category in
-                        Button {
-                            selectedCategory = category
-                            // Aquí podrías añadir lógica real de filtrado si los eventos
-                            // comunitarios tuvieran categorías asociadas.
-                            print("\(category) selected")
-                        } label: {
-                            Text(category)
-                                .font(.subheadline)
-                                .fontWeight(selectedCategory == category ? .semibold : .regular) // Resaltar seleccionado
-                                .padding(.vertical, 8)
-                                .padding(.horizontal, 16)
-                                .background(selectedCategory == category ? Color.green.opacity(0.8) : Color(.systemGray5)) // Color activo más sutil
-                                .foregroundColor(selectedCategory == category ? .white : .primary)
-                                .clipShape(Capsule())
-                                .animation(.easeInOut(duration: 0.2), value: selectedCategory) // Animación suave
-                        }
-                        // .buttonStyle(.plain) // Opcional: para evitar efectos de botón por defecto si interfieren
-                    }
-                }
-                .padding(.vertical, 5)
-            }
-        }
-    }
     
     // --- Subvista: Sección Lista de Eventos ---
     struct EventsListSection: View {
@@ -334,83 +291,98 @@ struct CommunityView: View {
     // --- Subvista: Tarjeta Evento Comunitario ---
     struct CommunityEventCard: View {
         let event: CommunityEvent
+        @State private var showEventDetails: Bool = false
         
         var body: some View {
-            VStack(alignment: .leading, spacing: 0) { // Sin espacio entre imagen y contenido
-                Image(event.imageName) // Imagen del evento
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(height: 180) // Altura de la imagen
-                    .clipped() // Recorta la imagen
-                // .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous)) // Redondea solo arriba si prefieres
-                
-                // Contenido debajo de la imagen
-                VStack(alignment: .leading, spacing: 8) { // Espaciado interno del contenido
-                    HStack {
-                        Text(event.title)
-                            .font(.headline)
-                            .lineLimit(1) // Evita que el título ocupe múltiples líneas
+            Button(action: {
+                showEventDetails = true
+            }) {
+                VStack(alignment: .leading, spacing: 0) {
+                    // Event Image
+                    ZStack(alignment: .topTrailing) {
+                        // For production, you'd want to use AsyncImage
                         
-                        Spacer() // Empuja el estado a la derecha
+                            Image(event.imageName)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(height: 180)
+                                .frame(maxWidth: .infinity)
+                                .clipped()
                         
+                        
+                        // Status Badge
                         Text(event.status)
                             .font(.caption)
                             .fontWeight(.medium)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
                             .background(event.statusColor)
                             .foregroundColor(.white)
-                            .cornerRadius(6) // Pequeño radio para la etiqueta de estado
+                            .cornerRadius(15)
+                            .padding(12)
                     }
                     
-                    HStack {
-                        Image(systemName: "calendar") // SF Symbol
-                        Text(event.dateTime)
-                    }
-                    .font(.subheadline)
-                    .foregroundColor(.secondary) // Color secundario para detalles
-                    
-                    HStack {
-                        Image(systemName: "location.fill") // SF Symbol
-                        Text(event.location)
-                    }
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    
-                    Divider().padding(.vertical, 4) // Separador visual
-                    
-                    HStack {
-                        Image(event.organizerAvatar) // Avatar del organizador
-                            .resizable()
-                            .frame(width: 30, height: 30)
-                            .clipShape(Circle())
+                    // Event Details
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(event.title)
+                            .font(.headline)
+                            .foregroundColor(.darkGreen)
+                            .lineLimit(2)
                         
-                        Text(event.organizerName)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        
-                        Spacer() // Empuja los asistentes a la derecha
-                        
-                        // Placeholder para avatares de asistentes (simplificado)
-                        HStack(spacing: -10) { // Spacing negativo para solapar
-                            Image(systemName: "person.circle.fill") // Placeholder
-                                .resizable().frame(width: 24, height: 24).clipShape(Circle()).foregroundColor(.gray)
-                            Image(systemName: "person.circle.fill") // Placeholder
-                                .resizable().frame(width: 24, height: 24).clipShape(Circle()).foregroundColor(.gray)
+                        HStack {
+                            // Date and Location
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "calendar")
+                                        .font(.subheadline)
+                                        .foregroundColor(.primaryGreen)
+                                    
+                                    Text(event.dateTime)
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
+                                }
+                                
+                                HStack(spacing: 6) {
+                                    Image(systemName: "mappin.circle.fill")
+                                        .font(.subheadline)
+                                        .foregroundColor(.primaryGreen)
+                                    
+                                    Text(event.location)
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
+                                        .lineLimit(1)
+                                }
+                            }
+                            
+                            Spacer()
+                            
+                            // Attendee Counter
+                            HStack(spacing: 4) {
+                                Image(systemName: "person.2.fill")
+                                    .font(.subheadline)
+                                    .foregroundColor(.primaryGreen)
+                                
+                                Text("\(event.attendeeCount)")
+                                    .font(.subheadline)
+                                    .foregroundColor(.primaryGreen)
+                                    .fontWeight(.semibold)
+                            }
                         }
-                        
-                        Text("+\(event.attendeeCount)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
                     }
+                    .padding(16)
+                    .background(Color.gray)
                 }
-                .padding() // Padding para el contenido textual
+                .background(Color.white)
+                .cornerRadius(16)
+                .shadow(color: Color.darkGreen.opacity(0.15), radius: 8, x: 0, y: 4)
             }
-            .background(Color(.systemGray6)) // Fondo sutil para la tarjeta
-            .cornerRadius(12) // Esquinas redondeadas para toda la tarjeta
-            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2) // Sombra opcional
+            .buttonStyle(PlainButtonStyle())
+            .sheet(isPresented: $showEventDetails) {
+                EventExpandedView(event: event)
+            }
         }
     }
+
     
     
     // --- Preview para el Canvas de Xcode ---
@@ -423,3 +395,6 @@ struct CommunityView: View {
     }
 }
 
+#Preview {
+    CommunityView()
+}

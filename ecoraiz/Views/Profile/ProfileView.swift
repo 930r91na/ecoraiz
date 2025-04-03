@@ -127,7 +127,7 @@ struct PlantCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) { // Sin espacio entre imagen y texto
-            Image(plant.imageURL) // <-- Usa la imagen de la planta
+            plant.imageURL
                 .resizable()
                 .scaledToFill() // Llena el espacio manteniendo la proporción
                 .frame(width: 150, height: 110) // Tamaño fijo para la imagen
@@ -142,7 +142,7 @@ struct PlantCard: View {
                     .foregroundColor(.gray)
                     .padding(.trailing, 10)
             }
-            .background(Color(.secondarySystemBackground)) // Fondo para la parte del texto
+            .background(Color.white) // Fondo para la parte del texto
         }
         .frame(width: 150) // Ancho total de la tarjeta
         .background(Color(.systemBackground)) // Fondo general por si la imagen no carga
@@ -176,6 +176,7 @@ struct EventCard: View {
                     HStack(spacing: 4) {
                          Image(systemName: "person.2.fill") // Icono opcional
                              .font(.caption)
+                             .foregroundColor(.primaryGreen)
                          Text("\(event.participantCount)")
                              .font(.subheadline)
                     }

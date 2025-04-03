@@ -6,7 +6,7 @@ struct InvasivePlant: Identifiable {
     let scientificName: String
     let distance: Double?
     let severity: Severity
-    let imageURL: String
+    let imageURL: Image
     let accuracyDetection: Double?
     
     // Added fields based on the plant information
