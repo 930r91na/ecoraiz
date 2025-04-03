@@ -26,3 +26,28 @@ struct InvasivePlant: Identifiable {
         }
     }
 }
+
+struct PlantDetails {
+    let name: String
+    let scientificName: String
+    let invasiveLevel: InvasiveLevel
+    let description: String
+    let controlMethods: [String]
+    let impacts: [String]
+}
+
+enum InvasiveLevel: String, CaseIterable {
+    case low = "Bajo"
+    case medium = "Medio"
+    case high = "Alto"
+    case extreme = "Extremo"
+    
+    var color: Color {
+        switch self {
+        case .low: return .green
+        case .medium: return .yellow
+        case .high: return .orange
+        case .extreme: return .red
+        }
+    }
+}

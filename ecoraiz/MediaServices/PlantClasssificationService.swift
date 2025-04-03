@@ -8,7 +8,6 @@ class PlantClassificationService: ObservableObject {
     @Published var isProcessing = false
     @Published var error: ClassificationError?
     
-    // Threshold for confidence level
     private let confidenceThreshold: Float = 0.7
     
     // MARK: - Classification Result Types
@@ -18,30 +17,6 @@ class PlantClassificationService: ObservableObject {
         let confidence: Float
         let isInvasive: Bool
         let details: PlantDetails?
-    }
-    
-    struct PlantDetails {
-        let scientificName: String
-        let invasiveLevel: InvasiveLevel
-        let description: String
-        let controlMethods: [String]
-        let impacts: [String]
-    }
-    
-    enum InvasiveLevel: String, CaseIterable {
-        case low = "Bajo"
-        case medium = "Medio"
-        case high = "Alto"
-        case extreme = "Extremo"
-        
-        var color: Color {
-            switch self {
-            case .low: return .green
-            case .medium: return .yellow
-            case .high: return .orange
-            case .extreme: return .red
-            }
-        }
     }
     
     enum ClassificationError: Error, LocalizedError {
@@ -63,48 +38,6 @@ class PlantClassificationService: ObservableObject {
             }
         }
     }
-    
-    // MARK: - Private Properties
-    
-    // Updated plant database to match the format of model labels
-    private var plantDatabase: [String: PlantDetails] = [
-        "Castor_Bean_Images": PlantDetails(
-            scientificName: "Ricinus communis",
-            invasiveLevel: .high,
-            description: "Planta de crecimiento rápido con hojas grandes en forma de palma y semillas tóxicas.",
-            controlMethods: ["Extracción manual con guantes", "Corte antes de la floración", "Aplicación localizada de herbicidas"],
-            impacts: ["Tóxico para humanos y animales", "Desplaza vegetación nativa", "Altera hábitats ribereños"]
-        ),
-        "Water_Hyacinth_Images": PlantDetails(
-            scientificName: "Eichhornia crassipes",
-            invasiveLevel: .extreme,
-            description: "Planta acuática flotante con flores moradas y bulbos inflados.",
-            controlMethods: ["Extracción mecánica", "Control biológico", "Tratamiento químico controlado"],
-            impacts: ["Bloquea cuerpos de agua", "Reduce oxígeno disponible", "Afecta pesca y navegación", "Aumenta evaporación del agua"]
-        ),
-        // Added other plants from your model's labels
-        "Chinaberry_Images": PlantDetails(
-            scientificName: "Melia azedarach",
-            invasiveLevel: .high,
-            description: "Árbol de crecimiento rápido con hojas compuestas y bayas venenosas.",
-            controlMethods: ["Tala y remoción de tocones", "Aplicación de herbicidas", "Control de semillas"],
-            impacts: ["Tóxico para humanos y animales", "Desplaza especies nativas", "Altera ecosistemas locales"]
-        ),
-        "Giant_Reed_Images": PlantDetails(
-            scientificName: "Arundo donax",
-            invasiveLevel: .extreme,
-            description: "Gramínea gigante de crecimiento rápido que puede alcanzar varios metros de altura.",
-            controlMethods: ["Remoción mecánica", "Aplicación de herbicidas", "Control de rizomas"],
-            impacts: ["Consume grandes cantidades de agua", "Desplaza vegetación nativa", "Aumenta riesgo de incendios"]
-        ),
-        "Mother_of_Thousands_Images": PlantDetails(
-            scientificName: "Kalanchoe daigremontiana",
-            invasiveLevel: .medium,
-            description: "Suculenta con pequeñas plantulas que se desarrollan en los bordes de las hojas.",
-            controlMethods: ["Extracción manual", "Evitar propagación", "Control de suelo"],
-            impacts: ["Tóxica para mascotas y ganado", "Invade rápidamente áreas nativas", "Difícil de erradicar"]
-        )
-    ]
     
     // Helper function to format model output to display name
     private func formatPlantName(_ modelLabel: String) -> String {
@@ -209,7 +142,7 @@ class PlantClassificationService: ObservableObject {
         print("Processing plant: \(name)")
         
         // Try to find the plant in our database
-        let plantDetails = self.plantDatabase[name]
+        let plantDetails = plantDatabase[name]
         
         // Check if it's a known invasive plant
         let isInvasive = plantDetails != nil

@@ -7,180 +7,144 @@ struct IdentifyPlantView: View {
     @State private var selectedImage: UIImage?
     @State private var showCameraSheet = false
     @State private var showPhotoLibrarySheet = false
-    @State private var detectedPlant: InvasivePlant?
+    @State private var potentialPlants: [InvasivePlant] = []
     @State private var showingAlert = false
     @State private var hasIdentified = false
+    @State private var navigateToPlantDetail = false
+    @State private var selectedPlantForDetail: InvasivePlant?
+    
+    // For preview testing - set to true to see identified state
+    @State private var previewIdentifiedState = false
+    
+    // Constants for consistent spacing and sizing
+    private let spacing: CGFloat = 16
+    private let cornerRadius: CGFloat = 12
+    private let buttonHeight: CGFloat = 56
+    private let imageHeight: CGFloat = 450
+    private let horizontalPadding: CGFloat = 20
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                // Title and instructions
-                if !hasIdentified {
-                    Text("Identificar Planta")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                    
-                    Text("Toma o selecciona una foto de la planta que deseas identificar")
-                        .font(.subheadline)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                }
-                
-                if hasIdentified && detectedPlant != nil {
-                    // Show results header
-                    Text("Planta Identificada")
-                        .font(.title)
-                        .fontWeight(.bold)
-                    
-                    // Card view for detected plant
-                    PlantCardView(plant: detectedPlant!)
-                        .padding(.horizontal)
-                    
-                    // Identification details and options
-                    VStack(alignment: .leading, spacing: 15) {
-                        if let result = classificationService.classificationResult,
-                           let details = result.details {
-                            // Description section
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Descripción:")
-                                    .font(.headline)
-                                
-                                Text(details.description)
-                                    .font(.body)
+            ZStack(alignment: .bottom) {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // HEADER SECTION
+                        if !hasIdentified && !previewIdentifiedState {
+                            VStack(spacing: spacing/2) {
+                                Text("Identificar Planta")
+                                    .font(.title)
+                                    .fontWeight(.bold)
                             }
-                            .padding()
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(10)
-                            
-                            // Control methods
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Métodos de control:")
-                                    .font(.headline)
-                                
-                                ForEach(details.controlMethods.prefix(2), id: \.self) { method in
-                                    HStack(alignment: .top) {
-                                        Image(systemName: "circle.fill")
-                                            .font(.system(size: 8))
-                                            .padding(.top, 6)
-                                        Text(method)
-                                    }
-                                }
-                                
-                                if details.controlMethods.count > 2 {
-                                    Text("Ver más...")
-                                        .foregroundColor(.blue)
-                                        .font(.subheadline)
-                                        .padding(.top, 5)
-                                }
+                            .padding(.top, spacing)
+                            .padding(.bottom, spacing)
+                        } else {
+                            VStack(spacing: spacing/2) {
+                                Text("Posible Planta Identificadada")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
                             }
-                            .padding()
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(10)
-                        }
-                    }
-                    .padding(.horizontal)
-                    
-                    Spacer()
-                    
-                    // Continue button
-                    Button(action: {
-                        resetIdentification()
-                    }) {
-                        Text("Identificar Otra Planta")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .padding()
-                            .frame(maxWidth: .infinity)
-                            .background(Color.blue)
-                            .cornerRadius(12)
-                            .padding(.horizontal)
-                    }
-                    .padding(.bottom)
-                    
-                } else {
-                    // Image preview
-                    if let image = selectedImage {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFit()
-                            .cornerRadius(12)
-                            .shadow(radius: 4)
-                            .padding()
-                    } else {
-                        // Placeholder
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.2))
-                            .frame(height: 300)
-                            .cornerRadius(12)
-                            .overlay(
-                                Image(systemName: "leaf")
-                                    .font(.system(size: 60))
-                                    .foregroundColor(.gray)
-                            )
-                            .padding()
-                    }
-                    
-                    Spacer()
-                    
-                    // Button stack
-                    HStack(spacing: 30) {
-                        Button(action: { showCameraSheet = true }) {
-                            VStack {
-                                Image(systemName: "camera.fill")
-                                    .font(.system(size: 30))
-                                Text("Cámara")
-                            }
-                            .frame(width: 120, height: 100)
-                            .background(Color.blue.opacity(0.1))
-                            .cornerRadius(10)
+                            .padding(.top, spacing)
+                            .padding(.bottom, spacing)
                         }
                         
-                        Button(action: { showPhotoLibrarySheet = true }) {
-                            VStack {
-                                Image(systemName: "photo.fill")
-                                    .font(.system(size: 30))
-                                Text("Galería")
-                            }
-                            .frame(width: 120, height: 100)
-                            .background(Color.blue.opacity(0.1))
-                            .cornerRadius(10)
+                        // IDENTIFICATION RESULTS OR IMAGE SELECTION
+                        if (hasIdentified && !potentialPlants.isEmpty) || previewIdentifiedState {
+                            plantSelectionView
+                                .background(
+                                    NavigationLink(
+                                        destination: selectedPlantForDetail.map { plant in
+                                            Text("Detalle de \(plant.name)")
+                                        },
+                                        isActive: $navigateToPlantDetail
+                                    ) {
+                                        EmptyView()
+                                    }
+                                )
+                        } else {
+                            imageSelectionView
                         }
+                        
+                        // Add spacer to push content up
+                        Spacer(minLength: 100) // Space for buttons at bottom
                     }
-                    
-                    // Identify button
-                    if selectedImage != nil {
+                    .padding(.horizontal, horizontalPadding)
+                }
+                
+                // Bottom buttons container - always at the bottom
+                VStack(spacing: spacing) {
+                    if ((hasIdentified && !potentialPlants.isEmpty) || previewIdentifiedState) {
+                        // Continue button
+                        Button(action: resetIdentification) {
+                            Text("Identificar Otra Planta")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: buttonHeight)
+                                .background(Color.primaryGreen)
+                                .cornerRadius(cornerRadius)
+                        }
+                    } else if selectedImage != nil {
+                        // Identify button
                         Button(action: identifyImage) {
-                            if classificationService.isProcessing {
-                                HStack {
+                            HStack(spacing: 10) {
+                                if classificationService.isProcessing {
                                     ProgressView()
                                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                     Text("Analizando...")
-                                        .font(.headline)
-                                        .foregroundColor(.white)
+                                } else {
+                                    Image(systemName: "magnifyingglass")
+                                    Text("Identificar Planta")
                                 }
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(Color.green.opacity(0.7))
-                                .cornerRadius(12)
-                                .padding(.horizontal)
-                            } else {
-                                Text("Identificar Planta")
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                    .padding()
-                                    .frame(maxWidth: .infinity)
-                                    .background(Color.green)
-                                    .cornerRadius(12)
-                                    .padding(.horizontal)
                             }
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: buttonHeight)
+                            .background(classificationService.isProcessing ? Color.primaryGreen.opacity(0.7) : Color.primaryGreen)
+                            .cornerRadius(cornerRadius)
                         }
                         .disabled(classificationService.isProcessing)
-                        .padding(.vertical)
+                        
+                        // Camera/Gallery buttons
+                        HStack(spacing: spacing) {
+                            captureButton(
+                                title: "Cámara",
+                                icon: "camera.fill",
+                                action: { showCameraSheet = true }
+                            )
+                            
+                            captureButton(
+                                title: "Galería",
+                                icon: "photo.fill",
+                                action: { showPhotoLibrarySheet = true }
+                            )
+                        }
+                    } else {
+                        // Initial camera/gallery buttons
+                        HStack(spacing: spacing) {
+                            captureButton(
+                                title: "Cámara",
+                                icon: "camera.fill",
+                                action: { showCameraSheet = true }
+                            )
+                            
+                            captureButton(
+                                title: "Galería",
+                                icon: "photo.fill",
+                                action: { showPhotoLibrarySheet = true }
+                            )
+                        }
                     }
                 }
+                .padding(.horizontal, horizontalPadding)
+                .padding(.bottom, spacing)
+                .background(
+                    Rectangle()
+                        .fill(Color(.systemBackground))
+                )
             }
-            .padding()
             .navigationBarTitleDisplayMode(.inline)
+            .background(Color(.systemBackground))
         }
         .takePhoto(isPresented: $showCameraSheet) { image in
             if let image = image {
@@ -194,32 +158,286 @@ struct IdentifyPlantView: View {
                 self.hasIdentified = false
             }
         }
-        // Add the alert for displaying error messages
         .alert(isPresented: $showingAlert) {
-            if let error = classificationService.error {
-                if error == .lowConfidence, classificationService.classificationResult != nil {
-                    return Alert(
-                        title: Text("Confianza Baja"),
-                        message: Text(error.localizedDescription + "\n¿Deseas ver el resultado de todas formas?"),
-                        primaryButton: .default(Text("Ver Resultado")) {
-                            processIdentificationResult()
-                        },
-                        secondaryButton: .cancel()
-                    )
+            createAlert()
+        }
+        .onAppear {
+            // For preview testing
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
+                setupPreviewData()
+            }
+            #endif
+        }
+    }
+    
+    // MARK: - Subviews
+    
+    // View for plant selection cards
+    private var plantSelectionView: some View {
+        VStack(spacing: spacing) {
+            // Plant suggestion cards
+            ForEach(previewIdentifiedState ? previewPlants() : potentialPlants) { plant in
+                plantCard(for: plant)
+            }
+        }
+    }
+    
+    // Plant card with image
+    private func plantCard(for plant: InvasivePlant) -> some View {
+        Button(action: {
+            selectedPlantForDetail = plant
+            navigateToPlantDetail = true
+        }) {
+            HStack(alignment: .center, spacing: 12) {
+                // Plant image from the captured photo
+                if let image = selectedImage {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 110, height: 110)
+                        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
                 } else {
-                    return Alert(
-                        title: Text("Error de Identificación"),
-                        message: Text(error.localizedDescription),
-                        dismissButton: .default(Text("OK"))
-                    )
+                    // Fallback image if none available
+                    Image(systemName: "leaf.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 40, height: 40)
+                        .padding(30)
+                        .foregroundColor(Color.primaryGreen)
+                        .background(Color.gray.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
                 }
+                
+                // Plant information
+                VStack(alignment: .leading, spacing: 6) {
+                    // Plant name
+                    Text(plant.name)
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                    
+                    // Scientific name
+                    Text(plant.scientificName)
+                        .font(.subheadline)
+                        .italic()
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .padding(.bottom, 2)
+                    
+                    // Severity level with dot
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(plant.severity.color)
+                            .frame(width: 8, height: 8)
+                        
+                        Text("Nivel de invasión: ")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Text(plant.severity.rawValue)
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(plant.severity.color)
+                    }
+                    
+                    // Confidence indicator
+                    if let accuracy = plant.accuracyDetection {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                Text("Confianza: ")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                Text("\(Int(accuracy * 100))%")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(getConfidenceColor(accuracy))
+                            }
+                            
+                            // Confidence bar
+                            GeometryReader { geometry in
+                                ZStack(alignment: .leading) {
+                                    // Background track
+                                    Capsule()
+                                        .frame(height: 4)
+                                        .foregroundColor(Color.gray.opacity(0.2))
+                                    
+                                    // Filled portion
+                                    Capsule()
+                                        .frame(width: geometry.size.width * CGFloat(accuracy), height: 4)
+                                        .foregroundColor(getConfidenceColor(accuracy))
+                                }
+                            }
+                            .frame(height: 4)
+                        }
+                    }
+                }
+                .padding(.vertical, 12)
+                
+                // Chevron indicator to show card is tappable
+                Image(systemName: "chevron.right")
+                    .foregroundColor(Color.gray.opacity(0.5))
+                    .padding(.trailing, 4)
+            }
+            .padding(.leading, 12)
+            .padding(.trailing, 8)
+            .padding(.vertical, 8)
+            .background(Color.gray.opacity(0.05))
+            .cornerRadius(cornerRadius)
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .stroke(Color.primaryGreen.opacity(0.2), lineWidth: 1)
+            )
+            .contentShape(Rectangle()) // Makes entire area tappable
+            .padding(.vertical, 6)
+        }
+        .buttonStyle(PlainButtonStyle()) // Prevents default button styling
+    }
+    
+    // Helper to get color based on confidence
+    private func getConfidenceColor(_ confidence: Double) -> Color {
+        if confidence >= 0.9 {
+            return .green
+        } else if confidence >= 0.7 {
+            return .orange
+        } else {
+            return .red
+        }
+    }
+    
+    // View for image selection only
+    private var imageSelectionView: some View {
+        VStack(spacing: spacing) {
+            // Image preview with better aspect ratio control
+            ZStack {
+                if let image = selectedImage {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: imageHeight)
+                        .frame(maxWidth: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+                } else {
+                    // Styled placeholder with same dimensions
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .fill(Color.gray.opacity(0.1))
+                        .frame(height: imageHeight)
+                        .frame(maxWidth: .infinity)
+                        .overlay(
+                            VStack(spacing: spacing) {
+                                Image(systemName: "leaf.fill")
+                                    .font(.system(size: 50))
+                                    .foregroundColor(Color.primaryGreen.opacity(0.7))
+                                Text("Selecciona o toma una foto")
+                                    .font(.headline)
+                                    .foregroundColor(.gray)
+                                Text("Las fotos claras mejoran la precisión")
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray.opacity(0.8))
+                            }
+                        )
+                }
+            }
+            .padding(.vertical, spacing/2)
+        }
+    }
+    
+    // Helper function for creating a capture button
+    private func captureButton(title: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.system(size: 20))
+                Text(title)
+                    .fontWeight(.medium)
+            }
+            .foregroundColor(Color.primaryGreen)
+            .frame(maxWidth: .infinity)
+            .frame(height: 54)
+            .background(Color.primaryGreen.opacity(0.1))
+            .cornerRadius(cornerRadius)
+        }
+    }
+    
+    // MARK: - Preview Helpers
+    
+    private func setupPreviewData() {
+        // Set to true to preview the identified state
+        previewIdentifiedState = true
+        
+        // If we want to test with an actual image
+        if selectedImage == nil {
+            // Use a system image as placeholder
+            if let image = UIImage(systemName: "leaf.fill") {
+                let size = CGSize(width: 800, height: 800)
+                UIGraphicsBeginImageContextWithOptions(size, false, 0.0)
+                image.draw(in: CGRect(origin: .zero, size: size))
+                selectedImage = UIGraphicsGetImageFromCurrentImageContext()
+                UIGraphicsEndImageContext()
+            }
+        }
+    }
+    
+    private func previewPlants() -> [InvasivePlant] {
+        return [
+            InvasivePlant(
+                id: UUID().uuidString,
+                name: "Lirio acuático",
+                scientificName: "Eichhornia crassipes",
+                distance: nil,
+                severity: .high,
+                imageURL: "",
+                accuracyDetection: 0.94
+            ),
+            InvasivePlant(
+                id: UUID().uuidString,
+                name: "Caña común",
+                scientificName: "Arundo donax",
+                distance: nil,
+                severity: .medium,
+                imageURL: "",
+                accuracyDetection: 0.76
+            ),
+            InvasivePlant(
+                id: UUID().uuidString,
+                name: "Madre de miles",
+                scientificName: "Kalanchoe daigremontiana",
+                distance: nil,
+                severity: .low,
+                imageURL: "",
+                accuracyDetection: 0.62
+            )
+        ]
+    }
+    
+    // MARK: - Functionality
+    
+    private func createAlert() -> Alert {
+        if let error = classificationService.error {
+            if error == .lowConfidence, classificationService.classificationResult != nil {
+                return Alert(
+                    title: Text("Confianza Baja"),
+                    message: Text(error.localizedDescription + "\n¿Deseas ver el resultado de todas formas?"),
+                    primaryButton: .default(Text("Ver Resultado")) {
+                        processIdentificationResult()
+                    },
+                    secondaryButton: .cancel()
+                )
             } else {
                 return Alert(
-                    title: Text("Error"),
-                    message: Text("Ocurrió un error desconocido"),
+                    title: Text("Error de Identificación"),
+                    message: Text(error.localizedDescription),
                     dismissButton: .default(Text("OK"))
                 )
             }
+        } else {
+            return Alert(
+                title: Text("Error"),
+                message: Text("Ocurrió un error desconocido"),
+                dismissButton: .default(Text("OK"))
+            )
         }
     }
     
@@ -270,26 +488,88 @@ struct IdentifyPlantView: View {
             severity = .medium
         }
         
-        // Create an InvasivePlant instance
-        detectedPlant = InvasivePlant(
+        // Create an InvasivePlant instance for the main result
+        let mainPlant = InvasivePlant(
             id: UUID().uuidString,
             name: result.plantName,
             scientificName: result.details?.scientificName ?? "Desconocido",
-            distance: nil, // No distance information
+            distance: nil,
             severity: severity,
-            imageURL: "", // No image URL, we're using the captured image
+            imageURL: "",
             accuracyDetection: Double(result.confidence)
         )
+        
+        // In a real app, we would get alternative suggestions from the model
+        // For now, we'll generate some fake alternatives with lower confidence
+        potentialPlants = createPotentialPlants(mainPlant: mainPlant)
         
         // Set hasIdentified to true to show the result view
         hasIdentified = true
     }
     
+    // Helper to create multiple potential plants (would be replaced with actual ML results)
+    private func createPotentialPlants(mainPlant: InvasivePlant) -> [InvasivePlant] {
+        // Start with the main plant
+        var plants = [mainPlant]
+        
+        // In a real app, these would come from the model's top-N predictions
+        // For now, we'll simulate with some predefined options
+        // This would be replaced with actual alternative results from your model
+        
+        // Only add alternatives if we have a main classification
+        if let mainConfidence = mainPlant.accuracyDetection, mainConfidence < 0.95 {
+            // Add some alternative plants with lower confidence
+            let alternatives = [
+                ("Caña común", "Arundo donax", InvasivePlant.Severity.medium, max(0.2, mainConfidence - 0.2)),
+                ("Madre de miles", "Kalanchoe daigremontiana", InvasivePlant.Severity.low, max(0.1, mainConfidence - 0.3))
+            ]
+            
+            for (name, scientificName, severity, confidence) in alternatives {
+                plants.append(InvasivePlant(
+                    id: UUID().uuidString,
+                    name: name,
+                    scientificName: scientificName,
+                    distance: nil,
+                    severity: severity,
+                    imageURL: "",
+                    accuracyDetection: confidence
+                ))
+            }
+        }
+        
+        // Sort by confidence (highest first)
+        return plants.sorted { ($0.accuracyDetection ?? 0) > ($1.accuracyDetection ?? 0) }
+    }
+    
     private func resetIdentification() {
         selectedImage = nil
-        detectedPlant = nil
+        potentialPlants = []
         hasIdentified = false
         classificationService.classificationResult = nil
         classificationService.error = nil
+        
+        // For previews, make sure we reset our preview state too
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
+            previewIdentifiedState = false
+        }
+        #endif
+    }
+}
+
+// MARK: - Previews
+
+#Preview("Normal State") {
+    IdentifyPlantView()
+}
+
+#Preview("Identified State") {
+    IdentifyPlantView(previewIdentifiedState: true)
+}
+
+// Initializer for preview
+extension IdentifyPlantView {
+    init(previewIdentifiedState: Bool = false) {
+        self._previewIdentifiedState = State(initialValue: previewIdentifiedState)
     }
 }
