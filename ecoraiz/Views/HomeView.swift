@@ -701,7 +701,7 @@ struct ObservationCardView: View {
                             Text(formatDateString(observation.observedOnString))
                                 .font(.caption)
                         }
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.primaryGreen)
                         
                         Spacer()
                     }
@@ -714,7 +714,7 @@ struct ObservationCardView: View {
                             Text(placeGuess)
                                 .lineLimit(1)
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(.primaryGreen)
                         }
                     }
                 }
