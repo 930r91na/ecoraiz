@@ -1,83 +1,172 @@
 import Foundation
-import SwiftUI
-import MapKit
+import SwiftUI    // Para @Published, ObservableObject, withAnimation
+import MapKit     // Para MKCoordinateRegion, CLLocationCoordinate2D
+import Combine    // Para AnyCancellable y gestión de LocationManager
+import CoreLocation // Para CLLocationCoordinate2D
 
-class LocationsViewModel: ObservableObject{
-    //All loaded locations
-    @Published var selectedLocationForDetail: Location? = nil
-    @Published var locations: [Location]
-    //Current location on map
-    @Published var mapLocation: Location {
-        didSet{
-            updateMapRegion(location: mapLocation)
+
+class LocationsViewModel: ObservableObject {
+
+    // --- Propiedades del Mapa ---
+    // Región inicial centrada en Puebla para pruebas
+    @Published var mapRegion: MKCoordinateRegion = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 19.0414, longitude: -98.2063),
+        span: MKCoordinateSpan(latitudeDelta: 0.6, longitudeDelta: 0.6)
+    )
+    // Span más cercano para cuando se interactúa con un pin
+    let detailSpan = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+
+    // --- Propiedades para Observaciones Cercanas de API ---
+    @Published var nearbyInvasiveObservations: [Observation] = [] // Guarda las observaciones de la API
+    @Published var isLoadingInvasives: Bool = false                  // Estado de carga para UI
+    @Published var invasiveLoadError: Error? = nil                   // Para mostrar errores al usuario
+
+    // --- Propiedades de Ubicación ---
+    @Published var locationAuthorizationStatus: CLAuthorizationStatus = .notDetermined
+    private let locationManager: LocationManager  // Instancia compartida
+    private var cancellables = Set<AnyCancellable>()
+    private var didListenForFirstLocation = false // Bandera para evitar múltiples suscripciones
+
+    // --- Configuración para la Búsqueda ---
+    let invasiveTaxonIDsForTest = [962637, 64017] // IDs de prueba
+    let pueblaCoordinate = CLLocationCoordinate2D(latitude: 19.0414, longitude: -98.2063)
+    let searchRadius: Double = 30.0 // en km
+
+    // --- Propiedad para Detalles (para mostrar info en un sheet, por ejemplo) ---
+    @Published var selectedObservationForDetail: Observation? = nil
+
+    // MARK: - Inicializador
+
+    /// Inicializador que recibe el LocationManager compartido.
+    init(locationManager: LocationManager) {
+        print("ℹ️ LocationsViewModel: Inicializando con LocationManager compartido.")
+        self.locationManager = locationManager
+        setupLocationSubscription()
+    }
+
+    // MARK: - Configuración de Subscripciones
+
+    /// Configura la suscripción al estado de autorización y a la ubicación.
+    private func setupLocationSubscription() {
+        // Suscribirse al estado de autorización
+        locationManager.$authorizationStatus
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] status in
+                guard let self = self else { return }
+                self.locationAuthorizationStatus = status
+                print("ℹ️ LocationsViewModel: Estado de Auth recibido: \(status)")
+                if self.locationManager.isAuthorized() {
+                    // Si está autorizado, escucha la primera ubicación y activa updates
+                    self.listenForFirstLocation()
+                    self.locationManager.startUpdatesIfNeeded()
+                } else if status == .notDetermined {
+                    print("ℹ️ LocationsViewModel: Permiso no determinado, esperando acción.")
+                } else {
+                    print("⚠️ LocationsViewModel: Permiso no OK (\(status)), no se buscarán observaciones.")
+                    // Limpiar datos si se revoca el permiso
+                    self.nearbyInvasiveObservations = []
+                    self.isLoadingInvasives = false
+                }
+            }
+            .store(in: &cancellables)
+
+        // Suscribirse a la ubicación para centrar el mapa e iniciar búsqueda (solo una vez)
+        listenForFirstLocation()
+
+        // Iniciar la verificación de autorización (solicita permiso si es necesario)
+        locationManager.checkAuthorization()
+        print("ℹ️ LocationsViewModel: Suscripción a ubicación configurada.")
+    }
+
+    /// Escucha sólo la primera ubicación válida para iniciar la búsqueda.
+    private func listenForFirstLocation() {
+        guard !didListenForFirstLocation else { return }
+        didListenForFirstLocation = true
+
+        locationManager.$location
+            .compactMap { $0 }  // Ignora valores nulos
+            .prefix(1)          // Solo la primera ubicación válida
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] location in
+                guard let self = self else { return }
+                print("✅ LocationsViewModel: Ubicación recibida para búsqueda: \(location.coordinate)")
+                self.centerMapOn(coordinate: location.coordinate)
+                self.loadNearbyObservations(coordinate: location.coordinate)
+            }
+            .store(in: &cancellables)
+    }
+
+    // MARK: - Funciones de Carga de Observaciones
+
+    /// Carga observaciones cercanas usando la ubicación recibida.
+    private func loadNearbyObservations(coordinate: CLLocationCoordinate2D) {
+        guard !isLoadingInvasives else { return }
+        isLoadingInvasives = true
+        invasiveLoadError = nil
+
+        fetchObservationsNearbyForTaxa(
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude,
+            radius: searchRadius,
+            taxonIDs: invasiveTaxonIDsForTest
+        ) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.isLoadingInvasives = false
+                switch result {
+                case .success(let observations):
+                    let validObservations = observations.filter { $0.coordinate != nil }
+                    self.nearbyInvasiveObservations = validObservations
+                    print("✅ LocationsViewModel: Observaciones recibidas: \(observations.count), con coordenadas: \(validObservations.count)")
+                case .failure(let error):
+                    print("❌ LocationsViewModel: Error al cargar observaciones - \(error.localizedDescription)")
+                    self.invasiveLoadError = error
+                }
+            }
         }
     }
-    
-    //Current region on map
-    @Published var mapRegion: MKCoordinateRegion = MKCoordinateRegion()
-    let mapSpan = MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
-    
-    //Show list of locations
-    
-    @Published var showLocationsList: Bool = false
-    
-    
-    // Show location detail via sheet
-    
-    @Published var sheetLocation: Location? = nil
-    
-    init(){
-        let locations = LocationsDataService.locations
-        self.locations = locations
-        self.mapLocation = locations.first!
-        
-        self.updateMapRegion(location: locations.first!)
-    }
-    
-    private func updateMapRegion(location: Location) {
-        withAnimation(.easeInOut){
-            mapRegion = MKCoordinateRegion(
-                center: location.coordinates,
-                span: mapSpan)
+
+    /// Función de carga de prueba para Puebla.
+    func loadNearbyInvasivesForPuebla() {
+        guard !isLoadingInvasives else { return }
+        print("▶️ LocationsViewModel: Iniciando carga de prueba para Puebla...")
+        isLoadingInvasives = true
+        invasiveLoadError = nil
+
+        fetchObservationsNearbyForTaxa(
+            latitude: pueblaCoordinate.latitude,
+            longitude: pueblaCoordinate.longitude,
+            radius: searchRadius,
+            taxonIDs: invasiveTaxonIDsForTest
+        ) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.isLoadingInvasives = false
+                switch result {
+                case .success(let observations):
+                    let validObservations = observations.filter { $0.coordinate != nil }
+                    self.nearbyInvasiveObservations = validObservations
+                    print("✅ LocationsViewModel: Prueba Puebla - Observaciones recibidas: \(observations.count), con coordenadas: \(validObservations.count)")
+                case .failure(let error):
+                    print("❌ LocationsViewModel: Error en prueba Puebla - \(error.localizedDescription)")
+                    self.invasiveLoadError = error
+                }
+            }
         }
     }
-    
-    func toggleLocationsList(){
-        withAnimation(.easeInOut){
-            showLocationsList.toggle()
-        }
-    }
-    
-    func showNextLocation(location: Location) {
+
+    // MARK: - Funciones Auxiliares
+
+    /// Centra el mapa en la coordenada especificada.
+    func centerMapOn(coordinate: CLLocationCoordinate2D) {
+        print("ℹ️ LocationsViewModel: Centrando mapa en \(coordinate)")
         withAnimation(.easeInOut) {
-            print("Cambiando a la siguiente ubicación: \(location.name)")
-            mapLocation = location
-            showLocationsList = false
+            mapRegion = MKCoordinateRegion(center: coordinate, span: detailSpan)
         }
     }
 
-    
-    func nextButtonPressed(){
-        //Get the current index
-
-        guard let currentIndex = locations.firstIndex(where: {$0 == mapLocation}) else {
-            print("Could not find current index in locations array! Should never happen.")
-            return
-        }
-        
-        //Next index is valid?
-        let nextIndex = currentIndex + 1
-        guard locations.indices.contains(nextIndex) else {
-            //Next index is not valid
-            //restart from 0
-            guard let firstLocation = locations.first else {return}
-            showNextLocation(location: firstLocation)
-            return
-        }
-        
-        // next index is valid
-        let nextLocation = locations[nextIndex]
-        showNextLocation(location: nextLocation)
-        
+    /// Solicita el permiso de ubicación.
+    func requestLocationPermission() {
+        locationManager.requestPermission()
     }
 }

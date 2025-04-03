@@ -97,64 +97,82 @@ func fetchFeaturedEventsFromINaturalist(placeId: Int, count: Int, completion: @e
 }
 
 
-// --- Función para obtener Observaciones Cercanas por Taxon ---
 func fetchObservationsNearbyForTaxa(
     latitude: Double,
     longitude: Double,
-    radius: Double = 30.0,
+    radius: Double = 30.0, // Radio en km
     taxonIDs: [Int],
-    resultsPerPage: Int = 50,
-    completion: @escaping (Result<[Observation], Error>) -> Void // Devuelve [Observation]
+    resultsPerPage: Int = 50, // Límite de resultados
+    completion: @escaping (Result<[Observation], Error>) -> Void
 ) {
-     guard !taxonIDs.isEmpty else {
-         DispatchQueue.main.async { completion(.success([])) }
-         return
-     }
-     let taxonIDString = taxonIDs.map { String($0) }.joined(separator: ",")
+    // Validar IDs
+    guard !taxonIDs.isEmpty else {
+        print("⚠️ NetworkService: Se intentó buscar sin IDs de taxón.")
+        DispatchQueue.main.async { completion(.success([])) }
+        return
+    }
+    let taxonIDString = taxonIDs.map { String($0) }.joined(separator: ",")
 
-     var components = URLComponents(string: "https://api.inaturalist.org/v1/observations")!
-     components.queryItems = [
-         URLQueryItem(name: "lat", value: "\(latitude)"),
-         URLQueryItem(name: "lng", value: "\(longitude)"),
-         URLQueryItem(name: "radius", value: "\(radius)"),
-         URLQueryItem(name: "taxon_id", value: taxonIDString),
-         URLQueryItem(name: "per_page", value: "\(resultsPerPage)"),
-         URLQueryItem(name: "photos", value: "true"),
-         URLQueryItem(name: "order", value: "desc"),
-         URLQueryItem(name: "order_by", value: "observed_on"),
-         URLQueryItem(name: "locale", value: "es-MX")
-     ]
+    // Construir URL
+    var components = URLComponents(string: "https://api.inaturalist.org/v1/observations")!
+    components.queryItems = [
+        URLQueryItem(name: "lat", value: "\(latitude)"),
+        URLQueryItem(name: "lng", value: "\(longitude)"),
+        URLQueryItem(name: "radius", value: "\(radius)"),
+        URLQueryItem(name: "taxon_id", value: taxonIDString), // <-- Filtro clave
+        URLQueryItem(name: "per_page", value: "\(resultsPerPage)"),
+        URLQueryItem(name: "photos", value: "true"), // Aún queremos las que tienen fotos
+        URLQueryItem(name: "order", value: "desc"),
+        URLQueryItem(name: "order_by", value: "observed_on"),
+        URLQueryItem(name: "locale", value: "es-MX") // Para nombres en español
+    ]
 
-     guard let url = components.url else {
-         DispatchQueue.main.async { completion(.failure(NetworkError.invalidURL)) }
-         return
-     }
-     print("Solicitando URL (Nearby Taxa): \(url.absoluteString)")
+    guard let url = components.url else {
+        DispatchQueue.main.async { completion(.failure(NetworkError.invalidURL)) }
+        return
+    }
+    print("ℹ️ NetworkService: Solicitando URL (Nearby Taxa): \(url.absoluteString)")
 
-     let task = URLSession.shared.dataTask(with: url) { data, response, error in
-        // ... (Manejo de errores y validación de respuesta, similar a la otra función) ...
-         if let error = error { /* ... */ DispatchQueue.main.async { completion(.failure(error)) }; return }
-         guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else { /* ... */ DispatchQueue.main.async { completion(.failure(NetworkError.badResponse(statusCode: (response as? HTTPURLResponse)?.statusCode ?? -1))) }; return }
-         guard let data = data else { /* ... */ DispatchQueue.main.async { completion(.failure(NetworkError.noData)) }; return }
+    // Crear Tarea de Red
+    let task = URLSession.shared.dataTask(with: url) { data, response, error in
+        // Manejar Errores de Red
+        if let error = error {
+            print("❌ NetworkService: Error de red (Nearby Taxa) - \(error.localizedDescription)")
+            DispatchQueue.main.async { completion(.failure(error)) }
+            return
+        }
+        // Validar Respuesta HTTP
+        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+            print("❌ NetworkService: Error HTTP (Nearby Taxa) - Status Code \(statusCode)")
+            if let data = data, let body = String(data: data, encoding: .utf8) { print("Error Body: \(body)") }
+            DispatchQueue.main.async { completion(.failure(NetworkError.badResponse(statusCode: statusCode))) }
+            return
+        }
+        // Validar Datos
+        guard let data = data else {
+            DispatchQueue.main.async { completion(.failure(NetworkError.noData)) }
+            return
+        }
 
+        // Decodificar JSON
         do {
             let decoder = JSONDecoder()
             let observationResponse = try decoder.decode(ObservationResponse.self, from: data)
-
-            print("Observaciones cercanas por Taxon recibidas: \(observationResponse.results.count)")
-            // Devolver directamente el array de [Observation]
+            print("✅ NetworkService: Observaciones cercanas por Taxon recibidas: \(observationResponse.results.count)")
+            // Éxito: Devolver el array [Observation]
             DispatchQueue.main.async { completion(.success(observationResponse.results)) }
-
         } catch let decodingError {
-             print("---- Decoding Error (Nearby Taxa) ----\n\(decodingError)\n------------------------")
-             if let jsonString = String(data: data, encoding: .utf8) { print("Raw JSON causing error:\n\(jsonString)") }
-             DispatchQueue.main.async { completion(.failure(NetworkError.decodingError(decodingError))) }
-         } catch {
-              DispatchQueue.main.async { completion(.failure(error)) }
-          }
-     }
-     task.resume()
- }
+            print("❌ NetworkService: Error de decodificación (Nearby Taxa) - \(decodingError)")
+            if let jsonString = String(data: data, encoding: .utf8) { print("--- JSON con Error ---\n\(jsonString)\n--------------------") }
+            DispatchQueue.main.async { completion(.failure(NetworkError.decodingError(decodingError))) }
+        } catch {
+             print("❌ NetworkService: Error desconocido (Nearby Taxa) - \(error)")
+             DispatchQueue.main.async { completion(.failure(error)) }
+         }
+    }
+    task.resume()
+}
 
 
 // --- Función Auxiliar para Formatear Fecha (CORREGIDA) ---

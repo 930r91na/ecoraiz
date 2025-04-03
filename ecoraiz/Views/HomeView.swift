@@ -1,22 +1,25 @@
 import SwiftUI
 import MapKit
-
+import CoreLocation
 
 struct HomeView: View {
     // MARK: - Properties
     @EnvironmentObject private var vm: LocationsViewModel
+    // Estados de la vista
     @State private var showSearchField: Bool = false
     @State private var searchText: String = ""
     @State private var searchResults: [MKMapItem] = []
     @FocusState private var isSearchFocused: Bool
     @State private var currentLocationName: String = ""
     @State private var previousCenter: CLLocationCoordinate2D?
-    @State private var sheetHeight: CGFloat = 180 // Initial half-open state
+    // Bottom sheet y FAB
+    @State private var sheetHeight: CGFloat = 180
     @State private var isDragging: Bool = false
     @State private var showCreateObservationView: Bool = false
     @State private var showIdentifyPlantView: Bool = false
     @State private var showMenuBubble: Bool = false
     
+    // Constantes de layout
     let maxWidthForIpad: CGFloat = 700
     let minHeight: CGFloat = 60
     let maxHeight: CGFloat = 600
@@ -28,7 +31,7 @@ struct HomeView: View {
         ZStack {
             mapLayer
                 .ignoresSafeArea()
-                .padding(.bottom)
+                .padding(.bottom, 0)
             
             VStack(spacing: 0) {
                 header
@@ -87,9 +90,10 @@ struct HomeView: View {
                 }
             }
         }
-        .sheet(item: $vm.sheetLocation, onDismiss: nil) { _ in
-            // Sheet content goes here
-        }
+        
+        //todo check something weird he added
+        
+        // MARK: Sheets
         .sheet(isPresented: $showCreateObservationView) {
             CreateObservationView()
                     .onDisappear {
@@ -110,20 +114,40 @@ struct HomeView: View {
             }
         }
         .onAppear {
-            currentLocationName = vm.mapLocation.name
+            updateCurrentLocationName(from: vm.mapRegion.center)
             previousCenter = vm.mapRegion.center
         }
         // Use a timer to check for map region changes
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
-            // Only update if the center coordinates have changed significantly
-            if let previous = previousCenter,
-               abs(previous.latitude - vm.mapRegion.center.latitude) > 0.001 ||
-               abs(previous.longitude - vm.mapRegion.center.longitude) > 0.001 {
-                updateCurrentLocationName()
-                previousCenter = vm.mapRegion.center
+            let currentCenter = vm.mapRegion.center
+            if let prev = previousCenter,
+               abs(prev.latitude - currentCenter.latitude) > 0.001 ||
+               abs(prev.longitude - currentCenter.longitude) > 0.001 {
+                updateCurrentLocationName(from: currentCenter)
+                previousCenter = currentCenter
             }
         }
     }
+    
+    private var mapLayer: some View {
+        Map(coordinateRegion: $vm.mapRegion,
+            showsUserLocation: true,
+            annotationItems: vm.nearbyInvasiveObservations
+        ) { observation in
+            MapAnnotation(coordinate: observation.coordinate ?? .init(latitude: 0, longitude: 0)) {
+                if let coord = observation.coordinate {
+                    ObservationMapAnnotationView()
+                        .shadow(radius: 3)
+                        .onTapGesture {
+                            handleAnnotationTap(observation: observation, coordinate: coord)
+                        }
+                } else {
+                    EmptyView()
+                }
+            }
+        }
+    }
+    
     
     // MARK: - Menu Bubble
     private var menuBubble: some View {
@@ -210,28 +234,34 @@ struct HomeView: View {
                     .padding(.top, 5)
                 
                 Spacer()
-                
-                Text("\(invasivePlants.count)")
+                Text("\(vm.nearbyInvasiveObservations.count)")
                     .font(.headline)
                     .foregroundColor(.white)
                     .frame(width: 30, height: 30)
-                    .background(Circle().fill(Color.red))
-                    .padding(.horizontal)
-                    .padding(.top, 5)
+                    .background(Circle().fill(
+                        vm.nearbyInvasiveObservations.isEmpty ? Color.gray : Color.red
+                    ))
             }
             
             // Content
-            ScrollView {
-                VStack(spacing: 15) {
-                    ForEach(invasivePlants) { plant in
-                        PlantCardView(plant: plant)
+            if let observation = vm.selectedObservationForDetail {
+                // Vista de detalle
+                ObservationDetailSheetView(observation: observation)
+                    .padding(.top, 5)
+            } else {
+                ScrollView {
+                    VStack(spacing: 15) {
+                        ForEach(invasivePlants) { plant in
+                            PlantCardView(plant: plant)
+                        }
                     }
+                    .padding(.horizontal)
+                    .padding(.top, 10)
+                    .padding(.bottom, 30)
                 }
-                .padding(.horizontal)
-                .padding(.top, 10)
-                .padding(.bottom, 30)
+                .frame(maxHeight: sheetHeight) // Adjust for header height
+
             }
-            .frame(maxHeight: sheetHeight) // Adjust for header height
         }
         .background(
             RoundedRectangle(cornerRadius: 16)
@@ -278,6 +308,7 @@ struct HomeView: View {
     
     // MARK: - Search Function
     private func searchForLocations() {
+        print("ℹ️ HomeView: Buscando lugares para: '\(searchText)'")
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = searchText
         request.region = vm.mapRegion
@@ -285,56 +316,217 @@ struct HomeView: View {
         let search = MKLocalSearch(request: request)
         search.start { response, error in
             guard let response = response, error == nil else {
+                DispatchQueue.main.async {
+                    self.searchResults = []
+                }
                 return
             }
-            
-            self.searchResults = response.mapItems
+            DispatchQueue.main.async {
+                self.searchResults = response.mapItems
+                print("ℹ️ HomeView: Búsqueda encontró \(response.mapItems.count) resultados.")
+            }
         }
     }
     
+    // MARK: - Funcion handle tap
+    private func handleAnnotationTap(observation: Observation, coordinate: CLLocationCoordinate2D) {
+        print("ℹ️ HomeView: Tocado pin de observación ID \(observation.id)")
+        vm.selectedObservationForDetail = observation
+        withAnimation(.spring()) {
+            vm.mapRegion.center = coordinate
+            vm.mapRegion.span = vm.detailSpan
+            if sheetHeight < maxHeight * 0.8 {
+                sheetHeight = 300
+            }
+        }
+    }
+
     // MARK: - Update Current Location Name
-    private func updateCurrentLocationName() {
+    private func updateCurrentLocationName(from coordinate: CLLocationCoordinate2D) {
         let geoCoder = CLGeocoder()
-        let location = CLLocation(latitude: vm.mapRegion.center.latitude,
-                                  longitude: vm.mapRegion.center.longitude)
-        
+        let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
         geoCoder.reverseGeocodeLocation(location) { placemarks, error in
             guard let placemark = placemarks?.first, error == nil else {
+                print("❌ Error geocoding: \(error?.localizedDescription ?? "Unknown error")")
+                self.currentLocationName = "Ubicación Desconocida"
                 return
             }
-            
-            // Choose the most appropriate name for the location
-            if let name = placemark.name {
+            if let name = placemark.name, !name.contains("Unnamed Road"), name.count < 35 {
                 self.currentLocationName = name
             } else if let locality = placemark.locality {
                 self.currentLocationName = locality
-            } else if let area = placemark.administrativeArea {
-                self.currentLocationName = area
+            } else if let subAdminArea = placemark.subAdministrativeArea {
+                self.currentLocationName = subAdminArea
+            } else if let adminArea = placemark.administrativeArea {
+                self.currentLocationName = adminArea
+            } else {
+                self.currentLocationName = "Área Desconocida"
             }
+            print("ℹ️ Ubicación geocodificada: \(self.currentLocationName)")
         }
     }
     
+    
     // MARK: - Navigation to Selected Location
     private func navigateToLocation(_ mapItem: MKMapItem) {
-        let coordinate = mapItem.placemark.coordinate
-        let newRegion = MKCoordinateRegion(
-            center: coordinate,
-            span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
-        )
-        
-        // Set the new location name
-        self.currentLocationName = mapItem.name ?? "Location"
-        
-        // Update the map region
-        vm.mapRegion = newRegion
-        previousCenter = coordinate
-        
-        // Reset the search UI
-        showSearchField = false
-        searchText = ""
-        isSearchFocused = false
+            print("ℹ️ HomeView: Navegando a resultado de búsqueda: \(mapItem.name ?? "...")")
+            let coordinate = mapItem.placemark.coordinate
+            let newRegion = MKCoordinateRegion(center: coordinate, span: vm.detailSpan)
+            self.currentLocationName = mapItem.name ?? "Ubicación Desconocida"
+            withAnimation(.easeInOut) {
+                vm.mapRegion = newRegion
+            }
+            previousCenter = coordinate
+            showSearchField = false
+            searchText = ""
+            searchResults = []
+            isSearchFocused = false
     }
 }
+// MARK: Vistas aux
+struct ObservationMapAnnotationView: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            Image(systemName: "leaf.circle.fill")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 30, height: 30)
+                .font(.headline)
+                .foregroundColor(.green)
+                .padding(6)
+                .background(Color(uiColor: .systemBackground).opacity(0.7))
+                .clipShape(Circle())
+            
+            Image(systemName: "triangle.fill")
+                .resizable()
+                .scaledToFit()
+                .foregroundColor(.green)
+                .frame(width: 10, height: 10)
+                .rotationEffect(Angle(degrees: 180))
+                .offset(y: -2)
+        }
+    }
+}
+
+struct ObservationDetailSheetView: View {
+    let observation: Observation
+    
+    @Environment(\.openURL) var openURL
+    
+    // Un ejemplo de formateador
+    private var dateFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        formatter.timeStyle = .short
+        formatter.locale = Locale(identifier: "es_MX")
+        return formatter
+    }
+    
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 15) {
+                Text(observation.taxon?.preferredCommonName?.capitalized
+                     ?? observation.taxon?.name
+                     ?? observation.speciesGuess?.capitalized
+                     ?? "Observación \(observation.id)")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .padding(.bottom, 5)
+                
+                if let scientificName = observation.taxon?.name,
+                   scientificName != observation.taxon?.preferredCommonName {
+                    Text(scientificName)
+                        .font(.title3)
+                        .italic()
+                        .foregroundColor(.secondary)
+                }
+                
+                // Imagen (AsyncImage)
+                if let imageURLString = observation.photos?.first?.url?.replacingOccurrences(of: "square", with: "medium"),
+                   let imageURL = URL(string: imageURLString) {
+                    AsyncImage(url: imageURL) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView().frame(height: 180)
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFill()
+                                .frame(height: 180)
+                                .cornerRadius(10)
+                        case .failure:
+                            Image(systemName: "photo.on.rectangle.angled")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 180)
+                                .foregroundColor(.secondary)
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+                } else {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.secondary.opacity(0.1))
+                        .frame(height: 180)
+                        .overlay(
+                            Image(systemName: "photo.on.rectangle.angled")
+                                .font(.largeTitle)
+                                .foregroundColor(.secondary)
+                        )
+                }
+                
+                // Detalles
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "calendar")
+                        Text("Observado: \(formatDateString(observation.observedOnString))")
+                    }
+                    HStack {
+                        Image(systemName: "mappin.and.ellipse")
+                        Text("Lugar: \(observation.placeGuess ?? "No especificado")")
+                    }
+                    if let userLogin = observation.user?.login {
+                        HStack {
+                            Image(systemName: "person.fill")
+                            Text("Por: \(userLogin)")
+                        }
+                    }
+                }
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .padding(.top, 5)
+                
+                // Link a iNaturalist
+                if let urlString = observation.uri, let url = URL(string: urlString) {
+                    Button {
+                        openURL(url)
+                    } label: {
+                        HStack {
+                            Text("Ver en iNaturalist")
+                            Image(systemName: "arrow.up.right.square")
+                        }
+                        .font(.headline)
+                        .foregroundColor(.blue)
+                    }
+                    .padding(.top)
+                }
+                
+                Spacer()
+            }
+            .padding()
+        }
+    }
+    
+    private func formatDateString(_ dateString: String?) -> String {
+        // Ejemplo simple
+        guard let ds = dateString else { return "N/A" }
+        // Si viene en formato ISO, parsearlo:
+        // ...
+        return ds
+    }
+}
+
+
 // MARK: - View Components
 extension HomeView {
     private var header: some View {
@@ -393,16 +585,6 @@ extension HomeView {
                 .background(Color.white.opacity(0.9))
                 .cornerRadius(8)
             }
-            
-            if vm.showLocationsList {
-                // Original location list functionality
-                LocationsListView(
-                    locations: vm.locations,
-                    selectedLocation: $vm.mapLocation
-                )
-                .frame(maxHeight: 600)
-                .transition(.move(edge: .top).combined(with: .opacity))
-            }
         }
         .background(Color.white)
         .cornerRadius(10)
@@ -447,29 +629,10 @@ extension HomeView {
         }
         .frame(maxHeight: min(CGFloat(searchResults.count * 60 + 10), 300))
     }
-    
-    private var mapLayer: some View {
-        Map(coordinateRegion: $vm.mapRegion,
-            annotationItems: vm.locations,
-            annotationContent: { location in
-                MapAnnotation(coordinate: location.coordinates) {
-                    LocationMapAnnotationView()
-                        .scaleEffect(vm.mapLocation == location ? 1 : 0.7)
-                        .shadow(radius: 10)
-                        .onTapGesture {
-                            vm.showNextLocation(location: location)
-                            // Update the current location name when selecting from predefined locations
-                            currentLocationName = location.name
-                            previousCenter = location.coordinates
-                        }
-                }
-            })
-    }
 }
 
 
-// MARK: - Plant Card View
-struct PlantCardView: View {
+struct ObservationCardView: View {
     let plant: InvasivePlant
     @State private var showPlantDetail: Bool = false
     
@@ -563,53 +726,78 @@ struct LocationMapAnnotationView: View {
     }
 }
 
-/// List view for displaying all locations
-struct LocationsListView: View {
-    let locations: [Location]
-    @Binding var selectedLocation: Location
-    @Environment(\.dismiss) private var dismiss
+
+// MARK: - Plant Card View
+struct PlantCardView: View {
+    let plant: InvasivePlant
+    @State private var showPlantDetail: Bool = false
     
     var body: some View {
-        List {
-            ForEach(locations) { location in
-                Button {
-                    selectedLocation = location
-                    dismiss()
-                } label: {
-                    HStack {
-                        if !location.imageNames.isEmpty, let imageName = location.imageNames.first {
-                            Image(imageName)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 60, height: 60)
-                                .cornerRadius(8)
-                        } else {
-                            Rectangle()
-                                .fill(Color.gray.opacity(0.3))
-                                .frame(width: 60, height: 60)
-                                .cornerRadius(8)
-                        }
+        Button(action: {
+            showPlantDetail = true
+        }) {
+            HStack(spacing: 12) {
+                // Image placeholder
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.gray.opacity(0.2))
+                    
+                    plant.imageURL
+                        .resizable()
+                        .scaledToFit()
                         
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(location.name)
-                                .font(.headline)
-                            Text(location.cityName)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(.leading, 8)
-                    }
-                    .padding(.vertical, 4)
                 }
+                .frame(width: 80, height: 80)
+                
+                // Information
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(plant.name)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    Text(plant.scientificName)
+                        .font(.subheadline)
+                        .italic()
+                        .foregroundColor(.secondary)
+                    
+                    HStack {
+                        // Severity indicator
+                        Text(plant.severity.rawValue)
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(plant.severity.color.opacity(0.2))
+                            .foregroundColor(plant.severity.color)
+                            .cornerRadius(4)
+                        
+                        Spacer()
+                        
+                        // Distance
+                        Text("\(String(format: "%.1f", plant.distance ?? 1)) km")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Spacer()
+                
+                // Arrow
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.secondary)
             }
+            .padding()
+            .background(Color.white)
+            .cornerRadius(12)
+            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
         }
-        .navigationTitle("Locations")
+        .buttonStyle(PlainButtonStyle()) // Ensures the button doesn't have default button styling
+        .sheet(isPresented: $showPlantDetail) {
+            PlantDetailSheet(plant: plant)
+        }
     }
 }
 
-
-
 #Preview {
     HomeView()
-        .environmentObject(LocationsViewModel())
+        .environmentObject(LocationsViewModel(locationManager: LocationManager()))
 }
