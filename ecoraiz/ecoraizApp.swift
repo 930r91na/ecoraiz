@@ -1,27 +1,46 @@
+// En ecoraizApp.swift
 
 import SwiftUI
-// import MapKit // No es necesario importar MapKit aquí usualmente
 
 @main
 struct ecoraizApp: App {
-    // Se eliminará la inicialización directa aquí y se hará desde el init.
-    @StateObject private var locationManager: LocationManager
+    @StateObject private var locationManager = LocationManager()
     @StateObject private var vm: LocationsViewModel
+    
+    // --- Estado para controlar la carga inicial ---
+    @State private var isAppLoading: Bool = true // Empieza como true
 
     init() {
-        // Crea una instancia local del LocationManager
-        let lm = LocationManager()
-        // Asigna el StateObject usando la instancia local
-        _locationManager = StateObject(wrappedValue: lm)
-        _vm = StateObject(wrappedValue: LocationsViewModel(locationManager: lm))
-        print("ℹ️ ecoraizApp: init completado. ViewModel y LocationManager creados.")
+        let sharedLocationManager = LocationManager() // Crear aquí si es necesario pasarla
+        _locationManager = StateObject(wrappedValue: sharedLocationManager)
+        _vm = StateObject(wrappedValue: LocationsViewModel(locationManager: sharedLocationManager))
     }
 
     var body: some Scene {
         WindowGroup {
-            NavigationBar()
-                .environmentObject(vm)
-                .environmentObject(locationManager)
+            ZStack { // Usa un ZStack para superponer LaunchView
+                if isAppLoading {
+                    LaunchView() // Muestra esta vista mientras carga
+                        .zIndex(1) // Asegura que esté encima
+                        .transition(.opacity) // Animación de fade out (opcional)
+                } else {
+                    NavigationBar() // Tu vista principal cuando termina la carga
+                        .environmentObject(vm)
+                        .environmentObject(locationManager)
+                }
+            }
+            .onAppear {
+                // --- Simula la carga o realiza tu carga real aquí ---
+                // Por ejemplo, esperar 2 segundos
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    withAnimation {
+                        isAppLoading = false // Oculta LaunchView y muestra NavigationBar
+                    }
+                }
+                // En una app real, pondrías isAppLoading = false en el completion
+                // handler de tu carga de datos inicial (ej. cargar perfil de usuario,
+                // obtener configuración, etc.)
+            }
         }
     }
 }

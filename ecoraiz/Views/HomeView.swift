@@ -239,7 +239,7 @@ struct HomeView: View {
                     .foregroundColor(.white)
                     .frame(width: 30, height: 30)
                     .background(Circle().fill(
-                        vm.nearbyInvasiveObservations.isEmpty ? Color.gray : Color.red
+                        vm.nearbyInvasiveObservations.isEmpty ? Color.gray : Color.navyBlue
                     ))
                     .padding()
             }
@@ -710,6 +710,7 @@ struct ObservationCardView: View {
                     if let placeGuess = observation.placeGuess, !placeGuess.isEmpty {
                         HStack(spacing: 2) {
                             Image(systemName: "mappin.circle.fill")
+                                .foregroundColor(.primaryGreen)
                                 .font(.caption2)
                             Text(placeGuess)
                                 .lineLimit(1)

@@ -1,23 +1,37 @@
 import SwiftUI
 
-// Estructura para los datos de ejemplo de un evento
-struct Event: Identifiable {
-    let id = UUID()
-    let title: String
-    let dateDescription: String
-    let participantCount: Int
-    let imageName: String
-}
 
 struct ProfileView: View {
     var user: User
 
-    let recentEvents: [Event] = [
-        Event(title: "Urban Gardening Workshop",
-              dateDescription: "Last Sunday",
-              participantCount: 24,
-              imageName: "event_gardening") // Reemplaza con tu imagen
-    ]
+    let attendedEvents: [CommunityEvent] = [
+            // Ejemplo de evento pasado
+            CommunityEvent(
+                // 'id' puede ser UUID() o un Int/String si viene de una API/DB
+                // Opcional si CommunityEvent lo genera automáticamente
+                title: "Taller de Jardinería Urbana",
+                dateTime: "Sáb, 15 Mar • 10:00 AM", // Fecha pasada
+                location: "Vivero Municipal, Ecatepec",
+                imageName: "gardener", // Usa nombre de Asset o URL
+                status: "Finalizado",              // Estado diferente
+                statusColor: .gray,                // Color diferente
+                organizerName: "Centro Comunitario",
+                organizerAvatar: "gardener",     // Usa nombre de Asset o URL
+                attendeeCount: 24
+            ),
+            // Puedes añadir más eventos CommunityEvent aquí
+            CommunityEvent(
+                 title: "Limpieza Río Atoyac (Asistido)",
+                 dateTime: "Dom, 23 Feb • 8:30 AM", // Fecha pasada
+                 location: "Puente de México, Puebla",
+                 imageName: "gardener", // Reusa o cambia URL
+                 status: "Completado",
+                 statusColor: .blue, // Otro color para completado
+                 organizerName: "Miguel Ángel Ruiz",
+                 organizerAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200", // Reusa o cambia URL
+                 attendeeCount: 35
+             )
+        ]
 
     // 3. Estado para la hoja de detalles de plantas
     @State private var showingPlantDetailSheet = false
@@ -80,39 +94,42 @@ struct ProfileView: View {
                                 }
 
 
-                // --- Sección Recent Events ---
                 VStack(alignment: .leading, spacing: 15) {
-                    Text("Eventos Asistidos")
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                        .padding(.horizontal) // Padding solo al título
+                                    Text("Eventos Asistidos")
+                                        .font(.title3)
+                                        .fontWeight(.semibold)
+                                        .padding(.horizontal)
 
-                    // En este ejemplo solo mostramos uno, pero podrías usar ForEach si tuvieras más
-                    if let firstEvent = recentEvents.first {
-                         EventCard(event: firstEvent)
-                             .padding(.horizontal) // Padding a los lados de la tarjeta de evento
-                    } else {
-                        Text("No recent events.")
-                            .padding(.horizontal)
-                            .foregroundColor(.gray)
-                    }
-                }
-                Spacer() // Empuja todo hacia arriba si el contenido es corto
-            }
-            // 5. Añadir modificador .sheet
-                        .sheet(isPresented: $showingPlantDetailSheet) {
-                            // Asegúrate de que tenemos detalles antes de mostrar la vista
-                            if let details = selectedPlantDetails {
-                                PlantDetailSheet(plant: details)
-                            } else {
-                                Text("Error: No se pudieron cargar los detalles de la planta.")
-                                    .padding()
+                                    // Itera sobre attendedEvents (que ahora son CommunityEvent)
+                                    // Y usa CommunityEventCard
+                                    ForEach(attendedEvents) { event in // Usa la nueva lista
+                                        CommunityEventCard(event: event) // <--- USA CommunityEventCard
+                                            .padding(.horizontal) // Padding a los lados de la tarjeta
+                                            .id(event.id)
+                                    }
+
+                                    // Mensaje si no hay eventos asistidos
+                                    if attendedEvents.isEmpty {
+                                        Text("No has asistido a eventos recientes.")
+                                            .padding(.horizontal)
+                                            .foregroundColor(.gray)
+                                    }
+                                }
+                                // -------------------------------------------
+
+                                Spacer()
                             }
+                            // Modificador .sheet para detalles de planta (se mantiene)
+                            .sheet(isPresented: $showingPlantDetailSheet) {
+                                 if let details = selectedPlantDetails {
+                                     PlantDetailSheet(plant: details) // Asume que PlantDetailSheet existe
+                                 } else {
+                                      Text("Error al cargar detalles.").padding()
+                                  }
+                             }
                         }
-        }
-        //.background(Color(.systemGroupedBackground)) // Color de fondo opcional similar a iOS Settings
-        //.ignoresSafeArea(edges: .top) // Si quieres que el scroll empiece desde arriba
-    }
+                        //.navigationTitle("Perfil") // El título usualmente va en la NavigationView que contiene esta vista
+                    }
     // 6. Función auxiliar para buscar detalles de la planta
     // En ProfileView
     private func findAndShowPlantDetails(for plant: InvasivePlant) {
@@ -145,7 +162,7 @@ struct BadgeItem: View {
         VStack(spacing: 8) {
             Image(systemName: iconName)
                 .font(.title2)
-                .foregroundColor(Color.black)
+                .foregroundColor(Color.primaryGreen)
                 .frame(width: 60, height: 60)
                 .background(color.opacity(0.15)) // Fondo suave del color
                 .clipShape(Circle())
@@ -190,46 +207,6 @@ struct PlantCard: View {
     }
 }
 
-// Vista para la tarjeta de un evento
-struct EventCard: View {
-    let event: Event
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Image(event.imageName) // <-- Usa la imagen del evento
-                .resizable()
-                .scaledToFill()
-                .frame(height: 180) // Altura de la imagen del evento
-                .clipped()
-
-            VStack(alignment: .leading, spacing: 8) { // Espacio entre textos del evento
-                Text(event.title)
-                    .font(.headline)
-                    .lineLimit(2) // Limita a 2 líneas
-
-                HStack {
-                    Text(event.dateDescription)
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
-                    Spacer() // Empuja el número a la derecha
-                    HStack(spacing: 4) {
-                         Image(systemName: "person.2.fill") // Icono opcional
-                             .font(.caption)
-                             .foregroundColor(.primaryGreen)
-                         Text("\(event.participantCount)")
-                             .font(.subheadline)
-                    }
-                    .foregroundColor(.blue) // Color para el contador
-                }
-            }
-            .padding() // Padding alrededor del texto del evento
-            .background(Color(.secondarySystemBackground)) // Fondo para el área de texto
-        }
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .gray.opacity(0.4), radius: 4, x: 0, y: 2)
-    }
-}
 
 
 struct UserProfileView_Previews: PreviewProvider {

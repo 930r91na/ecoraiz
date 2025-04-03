@@ -205,7 +205,7 @@ struct FeaturedObservationCard: View {
                         .font(.title2)
                         .foregroundColor(.white)
                         .padding(5)
-                        .background(Color.black.opacity(0.5))
+                        .background(Color.primaryGreen.opacity(0.5))
                         .clipShape(Circle())
                 }
                 .padding(8)
