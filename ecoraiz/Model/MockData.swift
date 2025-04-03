@@ -4,22 +4,23 @@ import SwiftUI
 
 let invasivePlants = [
     InvasivePlant(
-        id: "1",
-        name: "Lirio acuático",
-        scientificName: "Eichhornia crassipes",
-        distance: 0.5,
+        id: "3",
+        name: "Madre de miles",
+        scientificName: "Arundo donax",
+        distance: 2.3,
         severity: .extreme,
-        imageURL: Image("lili"),
+        imageURL: Image("mother"),
         accuracyDetection: nil,
-        problem: "Bloquea la luz del agua, reduce el oxígeno y afecta la fauna acuática.",
+        problem: "Crece rápidamente en ríos y arroyos, desplazando especies nativas.",
         alternativeUses: [
-            "Compostaje: Rica en nitrógeno, puede convertirse en fertilizante.",
-            "Filtro de agua: Se ha usado en algunos sistemas de tratamiento de aguas residuales.",
-            "Artesanías: Sus fibras pueden trenzarse para hacer canastos o alfombras."
+            "Construcción: Se puede usar como material para hacer cercas, techos, y muebles rústicos.",
+            "Instrumentos musicales: Se usa para fabricar flautas y cañas de saxofón.",
+            "Biomasa: Se puede secar y usar como leña o material de compostaje."
         ],
         eliminationMethods: [
-            "Retirarla manualmente del agua y dejarla secar completamente antes de desechar.",
-            "No dejar fragmentos en el agua, ya que puede regenerarse rápidamente."
+            "Cortar la planta lo más bajo posible y quitar los rizomas (raíces).",
+            "Secar completamente antes de desechar.",
+            "No quemar cerca de cuerpos de agua, ya que sus semillas pueden dispersarse."
         ]
     ),
     InvasivePlant(
@@ -40,27 +41,8 @@ let invasivePlants = [
             "Quemar o sellar los restos para evitar propagación.",
             "Tratar el árbol con productos específicos para fortalecer su sistema."
         ]
-    ),
-    InvasivePlant(
-        id: "3",
-        name: "Madre de miles",
-        scientificName: "Arundo donax",
-        distance: 2.3,
-        severity: .extreme,
-        imageURL: Image("mother"),
-        accuracyDetection: nil,
-        problem: "Crece rápidamente en ríos y arroyos, desplazando especies nativas.",
-        alternativeUses: [
-            "Construcción: Se puede usar como material para hacer cercas, techos, y muebles rústicos.",
-            "Instrumentos musicales: Se usa para fabricar flautas y cañas de saxofón.",
-            "Biomasa: Se puede secar y usar como leña o material de compostaje."
-        ],
-        eliminationMethods: [
-            "Cortar la planta lo más bajo posible y quitar los rizomas (raíces).",
-            "Secar completamente antes de desechar.",
-            "No quemar cerca de cuerpos de agua, ya que sus semillas pueden dispersarse."
-        ]
     )
+    
 ]
 
 
@@ -169,7 +151,7 @@ let plantDatabase: [String: PlantDetails] = [
 
 func generateExampleUsers() -> [User] {
     let usersInfo = [
-        (name: "Sarah Jenkins", bio: "I love capybaras", email: "capybaraissocool@example.com"),
+        (name: "Sarah Jenkins", bio: "Amo Capybaras", email: "capybaraissocool@example.com"),
     ]
     
     var users: [User] = []

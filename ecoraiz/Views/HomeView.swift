@@ -172,7 +172,7 @@ struct HomeView: View {
                 menuBubbleItem(
                     iconName: "plus.viewfinder",
                     title: "Nueva Observación",
-                    backgroundColor: Color.mustardYellow.opacity(0.9)
+                    backgroundColor: Color.primaryGreen.opacity(0.9)
                 )
             }
         }
@@ -239,7 +239,7 @@ struct HomeView: View {
                     .foregroundColor(.white)
                     .frame(width: 30, height: 30)
                     .background(Circle().fill(
-                        vm.nearbyInvasiveObservations.isEmpty ? Color.gray : Color.navyBlue
+                        vm.nearbyInvasiveObservations.isEmpty ? Color.gray : Color.primaryGreen
                     ))
                     .padding()
             }

@@ -26,7 +26,7 @@ struct ProfileView: View {
                  location: "Puente de México, Puebla",
                  imageName: "cleaning", // Reusa o cambia URL
                  status: "Completado",
-                 statusColor: .blue, // Otro color para completado
+                 statusColor: .primaryGreen, // Otro color para completado
                  organizerName: "Miguel Ángel Ruiz",
                  organizerAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200", // Reusa o cambia URL
                  attendeeCount: 35
@@ -62,10 +62,10 @@ struct ProfileView: View {
 
                 // --- Sección de Badges/Estadísticas ---
                 HStack(alignment: .top, spacing: 20) { // Espacio entre badges
-                    BadgeItem(iconName: "trophy", color: .yellow, label: "Plant\nMaster")
-                    BadgeItem(iconName: "tree.fill", color: .green, label: "100\nSpecies")
-                    BadgeItem(iconName: "star", color: .red, label: "Community\nStar")
-                    BadgeItem(iconName: "calendar", color: .blue, label: "Event\nHost")
+                    BadgeItem(iconName: "trophy", color: Color(.systemGray), label: "Maestro de\nPlantas")
+                    BadgeItem(iconName: "tree.fill", color: Color(.systemGray), label: "100\nEspecies")
+                    BadgeItem(iconName: "star", color: Color(.systemGray), label: "Estrella de\nla Comunidad")
+                    BadgeItem(iconName: "calendar", color: Color(.systemGray), label: "Creador de\nEventos")
                 }
                 .padding(.horizontal) // Padding a los lados de la fila de badges
 

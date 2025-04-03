@@ -268,7 +268,7 @@ struct OrganizerAvatarView: View {
                     switch phase {
                     case .empty:
                         Circle()
-                            .fill(Color.lightGreen.opacity(0.3))
+                            .fill(Color.primaryGreen.opacity(0.3))
                             .overlay(
                                 ProgressView()
                                     .tint(Color.primaryGreen)
@@ -280,14 +280,14 @@ struct OrganizerAvatarView: View {
                             .clipShape(Circle())
                     case .failure:
                         Circle()
-                            .fill(Color.lightGreen.opacity(0.3))
+                            .fill(Color.primaryGreen.opacity(0.3))
                             .overlay(
                                 Image(systemName: "person.fill")
                                     .foregroundColor(.primaryGreen)
                             )
                     @unknown default:
                         Circle()
-                            .fill(Color.lightGreen.opacity(0.3))
+                            .fill(Color.primaryGreen.opacity(0.3))
                     }
                 }
             } else {
@@ -322,7 +322,7 @@ struct EventAttendeesView: View {
             HStack(spacing: -8) {
                 ForEach(0..<min(5, event.attendeeCount), id: \.self) { _ in
                     Circle()
-                        .fill(Color.lightGreen.opacity(0.6))
+                        .fill(Color.primaryGreen.opacity(0.6))
                         .frame(width: 40, height: 40)
                         .overlay(
                             Image(systemName: "person.fill")
