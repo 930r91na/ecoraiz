@@ -9,10 +9,16 @@ struct InvasivePlant: Identifiable {
     let imageURL: String
     let accuracyDetection: Double?
     
+    // Added fields based on the plant information
+    let problem: String?
+    let alternativeUses: [String]?
+    let eliminationMethods: [String]?
+    
     enum Severity: String {
         case low = "Baja"
         case medium = "Media"
         case high = "Alta"
+        case extreme = "Extrema" // Added extreme level as it appears in the mock data
         
         var color: Color {
             switch self {
@@ -22,10 +28,13 @@ struct InvasivePlant: Identifiable {
                 return .orange
             case .high:
                 return .red
+            case .extreme:
+                return .purple // Added color for extreme severity
             }
         }
     }
 }
+
 
 struct PlantDetails {
     let name: String
@@ -34,6 +43,10 @@ struct PlantDetails {
     let description: String
     let controlMethods: [String]
     let impacts: [String]
+    
+    let problem: String?
+    let alternativeUses: [String]?
+    let eliminationMethods: [String]?
 }
 
 enum InvasiveLevel: String, CaseIterable {

@@ -22,6 +22,8 @@ struct CreateObservationView: View {
     @State private var isProcessingImage = false
     @State private var suggestedSpecies: [(name: String, confidence: Double)] = []
     @State private var showCalendar = false
+    @State private var showingSuccessAlert = false
+    @State private var isSubmitting = false
     
     // MARK: - Location Manager for current location
     @ObservedObject private var locationManager = LocationManager()
@@ -153,6 +155,7 @@ struct CreateObservationView: View {
                                 .labelsHidden()
                                 .padding(.vertical, 5)
                                 .transition(.opacity)
+                                .accentColor(Color.primaryGreen)
                         }
                     }
                     .padding(.horizontal)
@@ -240,6 +243,7 @@ struct CreateObservationView: View {
                     Button("Cancelar") {
                         dismiss()
                     }
+                    .foregroundColor(Color.primaryGreen)
                 }
                 
                 ToolbarItem(placement: .principal) {
@@ -248,11 +252,12 @@ struct CreateObservationView: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Guardar") {
+                    Button("Enviar") {
                         saveObservation()
                     }
                     .fontWeight(.bold)
                     .disabled(speciesGuess.isEmpty || selectedPhotos.isEmpty)
+                    .foregroundColor(Color.primaryGreen)
                 }
             }
             .sheet(isPresented: $showingImagePicker) {
@@ -293,6 +298,35 @@ struct CreateObservationView: View {
                     }
                 }
                 .edgesIgnoringSafeArea(.all) : nil
+        )
+        .alert(isPresented: $showingSuccessAlert) {
+            Alert(
+                title: Text("¡Observación Enviada!"),
+                message: Text("Tu reporte ha sido enviado correctamente. Gracias por contribuir a la monitorización de especies invasoras."),
+                dismissButton: .default(Text("OK")) {
+                    // Dismiss the view after they tap OK
+                    dismiss()
+                }
+            )
+        }
+        .overlay(
+            Group {
+                if isSubmitting {
+                    ZStack {
+                        Color.black.opacity(0.3)
+                            .edgesIgnoringSafeArea(.all)
+                        
+                        VStack {
+                            ProgressView()
+                            Text("Enviando observación...")
+                                .foregroundColor(.white)
+                        }
+                        .padding()
+                        .background(Color.gray.opacity(0.7))
+                        .cornerRadius(10)
+                    }
+                }
+            }
         )
     }
     
@@ -422,6 +456,10 @@ struct CreateObservationView: View {
             tagList: tags
             // In a real app, we would also include photos data
         )
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+               self.isSubmitting = false
+               self.showingSuccessAlert = true
+           }
         
         print("Saving observation: \(observation)")
         
@@ -529,6 +567,7 @@ struct PhotosGridView: View {
                                 .foregroundColor(Color.primaryGreen)
                             Text("Cámara")
                                 .font(.caption)
+                                .foregroundColor(Color.primaryGreen)
                         }
                         .frame(width: 100, height: 100)
                         .background(Color.gray.opacity(0.1))
@@ -542,6 +581,7 @@ struct PhotosGridView: View {
                                 .foregroundColor(Color.primaryGreen)
                             Text("Galería")
                                 .font(.caption)
+                                .foregroundColor(Color.primaryGreen)
                         }
                         .frame(width: 100, height: 100)
                         .background(Color.gray.opacity(0.1))

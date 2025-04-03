@@ -389,7 +389,17 @@ struct IdentifyPlantView: View {
                 distance: nil,
                 severity: .high,
                 imageURL: "",
-                accuracyDetection: 0.94
+                accuracyDetection: 0.94,
+                problem: "Bloquea la luz del agua, reduce el oxígeno y afecta la fauna acuática.",
+                alternativeUses: [
+                    "Compostaje: Rica en nitrógeno, puede convertirse en fertilizante.",
+                    "Filtro de agua: Se ha usado en algunos sistemas de tratamiento de aguas residuales.",
+                    "Artesanías: Sus fibras pueden trenzarse para hacer canastos o alfombras."
+                ],
+                eliminationMethods: [
+                    "Retirarla manualmente del agua y dejarla secar completamente antes de desechar.",
+                    "No dejar fragmentos en el agua, ya que puede regenerarse rápidamente."
+                ]
             ),
             InvasivePlant(
                 id: UUID().uuidString,
@@ -398,7 +408,18 @@ struct IdentifyPlantView: View {
                 distance: nil,
                 severity: .medium,
                 imageURL: "",
-                accuracyDetection: 0.76
+                accuracyDetection: 0.76,
+                problem: "Crece rápidamente en ríos y arroyos, desplazando especies nativas.",
+                alternativeUses: [
+                    "Construcción: Se puede usar como material para hacer cercas, techos, y muebles rústicos.",
+                    "Instrumentos musicales: Se usa para fabricar flautas y cañas de saxofón.",
+                    "Biomasa: Se puede secar y usar como leña o material de compostaje."
+                ],
+                eliminationMethods: [
+                    "Cortar la planta lo más bajo posible y quitar los rizomas (raíces).",
+                    "Secar completamente antes de desechar.",
+                    "No quemar cerca de cuerpos de agua, ya que sus semillas pueden dispersarse."
+                ]
             ),
             InvasivePlant(
                 id: UUID().uuidString,
@@ -407,7 +428,16 @@ struct IdentifyPlantView: View {
                 distance: nil,
                 severity: .low,
                 imageURL: "",
-                accuracyDetection: 0.62
+                accuracyDetection: 0.62,
+                problem: "Se reproduce muy rápido, cada hoja produce nuevas plántulas.",
+                alternativeUses: [
+                    "Planta medicinal: Algunas culturas la usan para tratar heridas y quemaduras.",
+                    "Planta ornamental: Si se controla bien, puede mantenerse en macetas sin riesgo de invasión."
+                ],
+                eliminationMethods: [
+                    "Arrancar toda la planta, asegurándose de eliminar sus pequeñas plántulas.",
+                    "No tirarla al compost ni a la tierra, ya que puede volver a crecer fácilmente."
+                ]
             )
         ]
     }
@@ -496,7 +526,9 @@ struct IdentifyPlantView: View {
             distance: nil,
             severity: severity,
             imageURL: "",
-            accuracyDetection: Double(result.confidence)
+            accuracyDetection: Double(result.confidence), problem: nil,
+            alternativeUses: [], eliminationMethods: []
+            
         )
         
         // In a real app, we would get alternative suggestions from the model
@@ -532,7 +564,10 @@ struct IdentifyPlantView: View {
                     distance: nil,
                     severity: severity,
                     imageURL: "",
-                    accuracyDetection: confidence
+                    accuracyDetection: confidence,
+                    problem: nil,
+                    alternativeUses: nil,
+                    eliminationMethods: nil,
                 ))
             }
         }
