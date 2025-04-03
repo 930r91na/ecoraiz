@@ -24,11 +24,11 @@ let invasivePlants = [
     ),
     InvasivePlant(
         id: "2",
-        name: "Muérdago",
+        name: "Castor Tartágo",
         scientificName: "Psittacanthus calyculatus",
         distance: 1.2,
         severity: .medium,
-        imageURL: Image("muerdago"),
+        imageURL: Image("castor"),
         accuracyDetection: nil,
         problem: "Parásito que debilita árboles nativos y ornamentales, causando su muerte prematura.",
         alternativeUses: [
@@ -43,11 +43,11 @@ let invasivePlants = [
     ),
     InvasivePlant(
         id: "3",
-        name: "Caña común",
+        name: "Madre de miles",
         scientificName: "Arundo donax",
         distance: 2.3,
         severity: .extreme,
-        imageURL: Image("reed"),
+        imageURL: Image("mother"),
         accuracyDetection: nil,
         problem: "Crece rápidamente en ríos y arroyos, desplazando especies nativas.",
         alternativeUses: [

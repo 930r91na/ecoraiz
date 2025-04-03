@@ -19,6 +19,10 @@ struct ProfileView: View {
               imageName: "event_gardening") // Reemplaza con tu imagen
     ]
 
+    // 3. Estado para la hoja de detalles de plantas
+    @State private var showingPlantDetailSheet = false
+    @State private var selectedPlantDetails: PlantDetails? = nil
+    
     var body: some View {
         ScrollView {
             VStack(spacing: 30) { // Espacio entre secciones principales
@@ -53,21 +57,28 @@ struct ProfileView: View {
 
                 // --- Sección Species Tracked ---
                 VStack(alignment: .leading, spacing: 15) {
-                    Text("Especies Seguidas")
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                        .padding(.horizontal) // Padding solo al título
+                                    Text("Especies Seguidas")
+                                        .font(.title3)
+                                        .fontWeight(.semibold)
+                                        .padding(.horizontal)
 
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 15) {
-                            ForEach(invasivePlants) { plant in
-                                PlantCard(plant: plant)
-                            }
-                        }
-                        .padding(.horizontal) // Padding a los lados del contenido scrollable
-                        .padding(.bottom, 5) // Pequeño padding inferior para la sombra
-                    }
-                }
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack(spacing: 15) {
+                                            // Usamos la lista global `invasivePlants` para este ejemplo
+                                            ForEach(invasivePlants) { plant in
+                                                PlantCard(plant: plant)
+                                                    // 4. Añadir gesto de toque
+                                                    .onTapGesture {
+                                                        // Buscar y mostrar detalles
+                                                        findAndShowPlantDetails(for: plant)
+                                                    }
+                                            }
+                                        }
+                                        .padding(.horizontal)
+                                        .padding(.bottom, 5)
+                                    }
+                                }
+
 
                 // --- Sección Recent Events ---
                 VStack(alignment: .leading, spacing: 15) {
@@ -88,9 +99,37 @@ struct ProfileView: View {
                 }
                 Spacer() // Empuja todo hacia arriba si el contenido es corto
             }
+            // 5. Añadir modificador .sheet
+                        .sheet(isPresented: $showingPlantDetailSheet) {
+                            // Asegúrate de que tenemos detalles antes de mostrar la vista
+                            if let details = selectedPlantDetails {
+                                PlantDetailSheet(plant: details)
+                            } else {
+                                Text("Error: No se pudieron cargar los detalles de la planta.")
+                                    .padding()
+                            }
+                        }
         }
         //.background(Color(.systemGroupedBackground)) // Color de fondo opcional similar a iOS Settings
         //.ignoresSafeArea(edges: .top) // Si quieres que el scroll empiece desde arriba
+    }
+    // 6. Función auxiliar para buscar detalles de la planta
+    // En ProfileView
+    private func findAndShowPlantDetails(for plant: InvasivePlant) {
+        // Busca los detalles
+        if let details = plantDatabase.values.first(where: { $0.name == plant.name }) {
+            // Éxito: Guarda los detalles Y activa la hoja
+            self.selectedPlantDetails = details
+            self.showingPlantDetailSheet = true // <-- Solo se activa si hay 'details'
+        } else {
+            // Falla: No hagas nada para mostrar la hoja.
+            // Opcional: Muestra un mensaje de error o registra el problema.
+            print("⚠️ Detalles no encontrados en plantDatabase para: \(plant.name)")
+            self.selectedPlantDetails = nil // Asegura que esté limpio
+            // NO establezcas showingPlantDetailSheet = true aquí
+            // Podrías mostrar una alerta si quieres dar feedback explícito del error.
+            // self.showingErrorAlert = true // (Necesitarías añadir estado para la alerta)
+        }
     }
 }
 
