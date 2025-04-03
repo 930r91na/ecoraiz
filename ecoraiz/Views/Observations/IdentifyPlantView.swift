@@ -1,337 +1,295 @@
 import SwiftUI
 import UIKit
-import CoreML
-import Vision
 
 struct IdentifyPlantView: View {
-    // MARK: - Properties
-    @Environment(\.dismiss) private var dismiss
-    @StateObject private var viewModel = PlantIdentificationViewModel()
-    @State private var showCamera = false
-    @State private var showPhotoLibrary = false
+    @ObservedObject private var classificationService = PlantClassificationService.shared
     
-    // MARK: - Body
+    @State private var selectedImage: UIImage?
+    @State private var showCameraSheet = false
+    @State private var showPhotoLibrarySheet = false
+    @State private var detectedPlant: InvasivePlant?
+    @State private var showingAlert = false
+    @State private var hasIdentified = false
+    
     var body: some View {
-        NavigationStack {
-            VStack {
-                // Header
-                headerView
+        NavigationView {
+            VStack(spacing: 20) {
+                // Title and instructions
+                if !hasIdentified {
+                    Text("Identificar Planta")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                    
+                    Text("Toma o selecciona una foto de la planta que deseas identificar")
+                        .font(.subheadline)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
                 
-                // Image selection area
-                
-                // Results area (shown when an image is selected)
-                if viewModel.selectedImage != nil {
+                if hasIdentified && detectedPlant != nil {
+                    // Show results header
+                    Text("Planta Identificada")
+                        .font(.title)
+                        .fontWeight(.bold)
+                    
+                    // Card view for detected plant
+                    PlantCardView(plant: detectedPlant!)
+                        .padding(.horizontal)
+                    
+                    // Identification details and options
+                    VStack(alignment: .leading, spacing: 15) {
+                        if let result = classificationService.classificationResult,
+                           let details = result.details {
+                            // Description section
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Descripción:")
+                                    .font(.headline)
+                                
+                                Text(details.description)
+                                    .font(.body)
+                            }
+                            .padding()
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(10)
+                            
+                            // Control methods
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Métodos de control:")
+                                    .font(.headline)
+                                
+                                ForEach(details.controlMethods.prefix(2), id: \.self) { method in
+                                    HStack(alignment: .top) {
+                                        Image(systemName: "circle.fill")
+                                            .font(.system(size: 8))
+                                            .padding(.top, 6)
+                                        Text(method)
+                                    }
+                                }
+                                
+                                if details.controlMethods.count > 2 {
+                                    Text("Ver más...")
+                                        .foregroundColor(.blue)
+                                        .font(.subheadline)
+                                        .padding(.top, 5)
+                                }
+                            }
+                            .padding()
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(10)
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    Spacer()
+                    
+                    // Continue button
+                    Button(action: {
+                        resetIdentification()
+                    }) {
+                        Text("Identificar Otra Planta")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.blue)
+                            .cornerRadius(12)
+                            .padding(.horizontal)
+                    }
+                    .padding(.bottom)
                     
                 } else {
-                    instructionsView
-                }
-                
-                Spacer()
-            }
-            .navigationTitle("Identificar Planta")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancelar") {
-                        dismiss()
-                    }
-                }
-            }
-            .takePhoto(isPresented: $showCamera) { image in
-                if let image = image {
-                    viewModel.selectedImage = image
-                    viewModel.analyzeImage()
-                }
-            }
-            .pickPhoto(isPresented: $showPhotoLibrary) { image in
-                if let image = image {
-                    viewModel.selectedImage = image
-                    viewModel.analyzeImage()
-                }
-            }
-            .alert("Error", isPresented: $viewModel.showError) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(viewModel.errorMessage)
-            }
-        }
-    }
-    
-    // MARK: - Header View
-    private var headerView: some View {
-        VStack(spacing: 8) {
-            Text("Toma una foto o selecciona una imagen de una planta para identificarla")
-                .font(.subheadline)
-                .multilineTextAlignment(.center)
-                .foregroundColor(.secondary)
-                .padding(.horizontal)
-        }
-        .padding(.vertical)
-    }
-    
-    
-    
-    // MARK: - Instructions View
-    private var instructionsView: some View {
-        VStack(spacing: 16) {
-            Text("¿Cómo identificar una planta?")
-                .font(.headline)
-                .padding(.top)
-            
-            VStack(alignment: .leading, spacing: 12) {
-                instructionRow(number: "1", text: "Toma una foto clara de la planta")
-                instructionRow(number: "2", text: "Enfoca las hojas, flores o características distintivas")
-                instructionRow(number: "3", text: "Evita sombras o reflejos excesivos")
-                instructionRow(number: "4", text: "Intenta tomar la foto con buena iluminación")
-            }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.secondary.opacity(0.1))
-            )
-            .padding(.horizontal)
-        }
-    }
-    
-    private func instructionRow(number: String, text: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Text(number)
-                .font(.subheadline)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-                .frame(width: 24, height: 24)
-                .background(Circle().fill(Color.blue))
-            
-            Text(text)
-                .font(.subheadline)
-            
-            Spacer()
-        }
-    }
-}
-
-// MARK: - Result Card View
-struct ResultCard: View {
-    let result: PlantIdentificationResult
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(result.plantName)
-                    .font(.headline)
-                
-                Spacer()
-                
-                if result.isInvasive {
-                    HStack(spacing: 4) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.red)
-                        
-                        Text("Invasiva")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.red)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule()
-                            .fill(Color.red.opacity(0.1))
-                    )
-                }
-            }
-            
-            if let scientificName = result.scientificName {
-                Text(scientificName)
-                    .font(.subheadline)
-                    .italic()
-                    .foregroundColor(.secondary)
-            }
-            
-            // Confidence bar
-            HStack {
-                Text("Coincidencia:")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                GeometryReader { geometry in
-                    ZStack(alignment: .leading) {
+                    // Image preview
+                    if let image = selectedImage {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .cornerRadius(12)
+                            .shadow(radius: 4)
+                            .padding()
+                    } else {
+                        // Placeholder
                         Rectangle()
                             .fill(Color.gray.opacity(0.2))
-                            .frame(height: 8)
-                            .cornerRadius(4)
+                            .frame(height: 300)
+                            .cornerRadius(12)
+                            .overlay(
+                                Image(systemName: "leaf")
+                                    .font(.system(size: 60))
+                                    .foregroundColor(.gray)
+                            )
+                            .padding()
+                    }
+                    
+                    Spacer()
+                    
+                    // Button stack
+                    HStack(spacing: 30) {
+                        Button(action: { showCameraSheet = true }) {
+                            VStack {
+                                Image(systemName: "camera.fill")
+                                    .font(.system(size: 30))
+                                Text("Cámara")
+                            }
+                            .frame(width: 120, height: 100)
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(10)
+                        }
                         
-                        Rectangle()
-                            .fill(confidenceColor)
-                            .frame(width: geometry.size.width * result.confidence, height: 8)
-                            .cornerRadius(4)
+                        Button(action: { showPhotoLibrarySheet = true }) {
+                            VStack {
+                                Image(systemName: "photo.fill")
+                                    .font(.system(size: 30))
+                                Text("Galería")
+                            }
+                            .frame(width: 120, height: 100)
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(10)
+                        }
+                    }
+                    
+                    // Identify button
+                    if selectedImage != nil {
+                        Button(action: identifyImage) {
+                            if classificationService.isProcessing {
+                                HStack {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    Text("Analizando...")
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+                                }
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(Color.green.opacity(0.7))
+                                .cornerRadius(12)
+                                .padding(.horizontal)
+                            } else {
+                                Text("Identificar Planta")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .frame(maxWidth: .infinity)
+                                    .background(Color.green)
+                                    .cornerRadius(12)
+                                    .padding(.horizontal)
+                            }
+                        }
+                        .disabled(classificationService.isProcessing)
+                        .padding(.vertical)
                     }
                 }
-                .frame(height: 8)
-                
-                Text("\(Int(result.confidence * 100))%")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .frame(width: 40, alignment: .trailing)
+            }
+            .padding()
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .takePhoto(isPresented: $showCameraSheet) { image in
+            if let image = image {
+                self.selectedImage = image
+                self.hasIdentified = false
             }
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
-        )
-    }
-    
-    private var confidenceColor: Color {
-        if result.isInvasive {
-            return result.confidence > 0.7 ? Color.red : Color.orange
-        } else {
-            return result.confidence > 0.7 ? Color.green : Color.blue
+        .pickPhoto(isPresented: $showPhotoLibrarySheet) { image in
+            if let image = image {
+                self.selectedImage = image
+                self.hasIdentified = false
+            }
         }
-    }
-}
-
-// MARK: - Model
-struct PlantIdentificationResult: Identifiable {
-    let id = UUID()
-    let plantName: String
-    let scientificName: String?
-    let confidence: Double
-    let isInvasive: Bool
-}
-
-// MARK: - View Model
-class PlantIdentificationViewModel: ObservableObject {
-    @Published var selectedImage: UIImage?
-    @Published var identificationResults: [PlantIdentificationResult] = []
-    @Published var isAnalyzing: Bool = false
-    @Published var showError: Bool = false
-    @Published var errorMessage: String = ""
-    
-    private var model: VNCoreMLModel?
-    
-    init() {
-        loadModel()
-    }
-    
-    private func loadModel() {
-        do {
-            // Load your specific ML model here
-            if let modelURL = Bundle.main.url(forResource: "ecoraiz", withExtension: "mlmodelc") {
-                model = try VNCoreMLModel(for: MLModel(contentsOf: modelURL))
+        // Add the alert for displaying error messages
+        .alert(isPresented: $showingAlert) {
+            if let error = classificationService.error {
+                if error == .lowConfidence, classificationService.classificationResult != nil {
+                    return Alert(
+                        title: Text("Confianza Baja"),
+                        message: Text(error.localizedDescription + "\n¿Deseas ver el resultado de todas formas?"),
+                        primaryButton: .default(Text("Ver Resultado")) {
+                            processIdentificationResult()
+                        },
+                        secondaryButton: .cancel()
+                    )
+                } else {
+                    return Alert(
+                        title: Text("Error de Identificación"),
+                        message: Text(error.localizedDescription),
+                        dismissButton: .default(Text("OK"))
+                    )
+                }
             } else {
-                errorMessage = "No se pudo encontrar el modelo de ML"
-                showError = true
-            }
-        } catch {
-            errorMessage = "Error al cargar el modelo: \(error.localizedDescription)"
-            showError = true
-        }
-    }
-    
-    func analyzeImage() {
-        guard let image = selectedImage, let model = model else {
-            errorMessage = "No hay imagen seleccionada o el modelo no está cargado"
-            showError = true
-            return
-        }
-        
-        isAnalyzing = true
-        identificationResults = []
-        
-        // Convert UIImage to CIImage
-        guard let ciImage = CIImage(image: image) else {
-            isAnalyzing = false
-            errorMessage = "No se pudo procesar la imagen"
-            showError = true
-            return
-        }
-        
-        // Create a Vision request with the model
-        let request = VNCoreMLRequest(model: model) { [weak self] request, error in
-            DispatchQueue.main.async {
-                self?.isAnalyzing = false
-                
-                if let error = error {
-                    self?.errorMessage = "Error en análisis: \(error.localizedDescription)"
-                    self?.showError = true
-                    return
-                }
-                
-                // Process the results
-                if let results = request.results as? [VNClassificationObservation] {
-                    self?.processClassificationResults(results)
-                }
+                return Alert(
+                    title: Text("Error"),
+                    message: Text("Ocurrió un error desconocido"),
+                    dismissButton: .default(Text("OK"))
+                )
             }
         }
+    }
+    
+    private func identifyImage() {
+        guard let image = selectedImage else { return }
         
-        // Perform the request
-        let handler = VNImageRequestHandler(ciImage: ciImage)
-        do {
-            try handler.perform([request])
-        } catch {
-            isAnalyzing = false
-            errorMessage = "Error al realizar análisis: \(error.localizedDescription)"
-            showError = true
+        // Show loading indicator or disable button while processing
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        
+        // Process the image with ML model
+        classificationService.classifyImage(image)
+        
+        // Check for errors or low confidence after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            if classificationService.error == nil {
+                generator.notificationOccurred(.success)
+                // No error, process the result
+                processIdentificationResult()
+            } else if classificationService.error == .lowConfidence {
+                generator.notificationOccurred(.warning)
+                // Show alert for low confidence
+                showingAlert = true
+            } else {
+                generator.notificationOccurred(.error)
+                // Show alert for other errors
+                showingAlert = true
+            }
         }
     }
     
-    private func processClassificationResults(_ results: [VNClassificationObservation]) {
-        // Process top 3 results
-        let topResults = results.prefix(3)
+    private func processIdentificationResult() {
+        guard let result = classificationService.classificationResult else { return }
         
-        // Here you would map your model's outputs to your app's data model
-        // This is a simplified example - you'll need to customize based on your model's output
+        // Convert the classification result to your InvasivePlant model
+        let severity: InvasivePlant.Severity
         
-        var plantResults: [PlantIdentificationResult] = []
-        
-        for result in topResults {
-            // Parse the identifier from your model's output
-            // This is just an example - adapt to your model's specific output format
-            let resultComponents = result.identifier.split(separator: ",")
-            let plantName = String(resultComponents.first ?? "Desconocido")
-            
-            // Determine if the plant is invasive (this logic would be specific to your app)
-            // For example, you might have a list of known invasive species to check against
-            let isInvasive = checkIfInvasive(plantName: plantName)
-            
-            // Create a result object
-            let plantResult = PlantIdentificationResult(
-                plantName: plantName,
-                scientificName: extractScientificName(from: result.identifier),
-                confidence: Double(result.confidence),
-                isInvasive: isInvasive
-            )
-            
-            plantResults.append(plantResult)
+        if let details = result.details {
+            switch details.invasiveLevel {
+            case .low:
+                severity = .low
+            case .medium:
+                severity = .medium
+            case .high, .extreme:
+                severity = .high
+            }
+        } else {
+            severity = .medium
         }
         
-        self.identificationResults = plantResults
+        // Create an InvasivePlant instance
+        detectedPlant = InvasivePlant(
+            id: UUID().uuidString,
+            name: result.plantName,
+            scientificName: result.details?.scientificName ?? "Desconocido",
+            distance: nil, // No distance information
+            severity: severity,
+            imageURL: "", // No image URL, we're using the captured image
+            accuracyDetection: Double(result.confidence)
+        )
+        
+        // Set hasIdentified to true to show the result view
+        hasIdentified = true
     }
     
-    private func extractScientificName(from identifier: String) -> String? {
-        // This is just an example - adapt to your model's specific output format
-        let components = identifier.split(separator: ",")
-        if components.count > 1 {
-            return String(components[1]).trimmingCharacters(in: .whitespaces)
-        }
-        return nil
+    private func resetIdentification() {
+        selectedImage = nil
+        detectedPlant = nil
+        hasIdentified = false
+        classificationService.classificationResult = nil
+        classificationService.error = nil
     }
-    
-    private func checkIfInvasive(plantName: String) -> Bool {
-        let knownInvasiveSpecies = [
-            "Lirio acuático", "Muérdago", "Pasto Buffel", "Eucalipto",
-            "Casuarina", "Carrizo gigante", "Árbol de las lluvias",
-            "Kalanchoe", "Piracanto", "Arundo"
-        ]
-        
-        return knownInvasiveSpecies.contains {
-            plantName.lowercased().contains($0.lowercased())
-        }
-    }
-}
-
-#Preview {
-    IdentifyPlantView()
 }

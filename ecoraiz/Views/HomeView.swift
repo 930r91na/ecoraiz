@@ -136,7 +136,7 @@ struct HomeView: View {
                 menuBubbleItem(
                     iconName: "leaf.fill",
                     title: "Identificar Planta Invasora",
-                    backgroundColor: Color.green.opacity(0.9)
+                    backgroundColor: Color.primaryGreen.opacity(0.9)
                 )
             }
             
@@ -148,7 +148,7 @@ struct HomeView: View {
                 menuBubbleItem(
                     iconName: "plus.viewfinder",
                     title: "Nueva Observación",
-                    backgroundColor: Color.blue.opacity(0.9)
+                    backgroundColor: Color.mustardYellow.opacity(0.9)
                 )
             }
         }
@@ -508,7 +508,7 @@ struct PlantCardView: View {
                     Spacer()
                     
                     // Distance
-                    Text("\(String(format: "%.1f", plant.distance)) km")
+                    Text("\(String(format: "%.1f", plant.distance ?? 1)) km")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

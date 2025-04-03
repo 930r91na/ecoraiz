@@ -4,9 +4,10 @@ struct InvasivePlant: Identifiable {
     let id: String
     let name: String
     let scientificName: String
-    let distance: Double
+    let distance: Double?
     let severity: Severity
     let imageURL: String
+    let accuracyDetection: Double?
     
     enum Severity: String {
         case low = "Baja"
