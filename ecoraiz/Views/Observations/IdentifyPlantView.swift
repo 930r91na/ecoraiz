@@ -567,7 +567,7 @@ struct IdentifyPlantView: View {
                     accuracyDetection: confidence,
                     problem: nil,
                     alternativeUses: nil,
-                    eliminationMethods: nil,
+                    eliminationMethods: nil
                 ))
             }
         }

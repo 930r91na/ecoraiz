@@ -117,12 +117,13 @@ struct CommunityView: View {
                         // Si tu mapeo convierte nil -> "Ubicación desconocida", debes filtrar por eso.
                         
                         // Ejemplo más estricto: Requiere título no por defecto, fecha válida, lugar válido e imagen
+                        let isDateValid = event.dateTime != "Fecha inválida"
                         let hasGoodTitle = event.title != "Observación sin identificar" && event.title != "Observation" && !event.title.starts(with: "Observación ID:") // Ajusta según tus fallbacks
                         let hasGoodDate = event.dateTime != "Fecha desconocida" && event.dateTime != "Date unknown"
                         let hasGoodLocation = event.location != "Ubicación desconocida" && event.location != "Location unknown"
                         let hasImage = event.imageURL != nil && !(event.imageURL ?? "").isEmpty
                         
-                        return hasGoodTitle && hasGoodDate && hasGoodLocation && hasImage
+                        return isDateValid && hasGoodTitle && hasGoodDate && hasGoodLocation && hasImage
                     }
                     
                     self.featuredObservations = filteredEvents
@@ -421,3 +422,4 @@ struct CommunityView: View {
         }
     }
 }
+

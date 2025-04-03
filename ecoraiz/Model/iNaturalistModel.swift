@@ -1,7 +1,7 @@
 // En INaturalistModels.swift
 
 import Foundation
-
+import CoreLocation
 // --- Modelos Codable para la API de iNaturalist ---
 
 // Modelo principal de la respuesta
@@ -30,7 +30,18 @@ struct Observation: Codable, Identifiable {
     let photos: [Photo]?          // Array de fotos
     let uri: String?              // URL a la página web de la observación
     let taxon: Taxon?             // Información taxonómica (añadido)
+    let geojson: GeoJSON?
 
+    var coordinate: CLLocationCoordinate2D? {
+           guard let geo = geojson, geo.type == "Point", geo.coordinates.count == 2 else {
+               return nil // No hay geojson válido o no es tipo Punto
+           }
+           // IMPORTANTE: GeoJSON es [longitude, latitude]
+           let longitude = geo.coordinates[0]
+           let latitude = geo.coordinates[1]
+           return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+       }
+    
     enum CodingKeys: String, CodingKey {
         case id
         case speciesGuess = "species_guess"
@@ -40,7 +51,14 @@ struct Observation: Codable, Identifiable {
         case photos
         case uri
         case taxon // Añadido para decodificar el objeto taxon
+        case geojson
     }
+}
+
+// Estructura auxiliar para decodificar el campo geojson
+struct GeoJSON: Codable {
+    let type: String?
+    let coordinates: [Double] // Array [longitude, latitude]
 }
 
 // Modelo para el objeto Taxon anidado dentro de Observation

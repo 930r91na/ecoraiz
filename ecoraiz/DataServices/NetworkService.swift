@@ -3,18 +3,10 @@
 import Foundation
 // import SwiftUI // Probablemente no necesario aquí
 
-// --- Modelo para la UI (Debe estar definido en otro archivo, ej. CommunityView.swift o Models.swift) ---
-// Solo como referencia para la función fetch.
-/*
-struct FeaturedEvent: Identifiable {
-    let id: Int
-    let title: String
-    let dateTime: String
-    let location: String
-    let imageURL: String?
-    let observationURL: String?
-}
-*/
+// --- Modelos (Definidos en otros archivos) ---
+// Asegúrate que FeaturedEvent (Identifiable, con id: Int) y los modelos de iNaturalist
+// (ObservationResponse, Observation, Taxon, iNatUser, Photo, GeoJSON) estén definidos
+// y accesibles desde aquí.
 
 // --- Enum para Errores de Red ---
 enum NetworkError: Error {
@@ -22,13 +14,12 @@ enum NetworkError: Error {
     case badResponse(statusCode: Int)
     case noData
     case decodingError(Error)
-    case mappingError(String) // Puedes usarlo si quieres errores más específicos del mapeo
+    case mappingError(String)
 }
 
-// --- Función para obtener Observaciones y Mapearlas a FeaturedEvent ---
+// --- Función para obtener Observaciones Destacadas (Featured) ---
 func fetchFeaturedEventsFromINaturalist(placeId: Int, count: Int, completion: @escaping (Result<[FeaturedEvent], Error>) -> Void) {
 
-    // 1. Construir URL (igual que antes)
     var components = URLComponents(string: "https://api.inaturalist.org/v1/observations")!
     components.queryItems = [
         URLQueryItem(name: "place_id", value: "\(placeId)"),
@@ -37,172 +28,188 @@ func fetchFeaturedEventsFromINaturalist(placeId: Int, count: Int, completion: @e
         URLQueryItem(name: "per_page", value: "\(count)"),
         URLQueryItem(name: "photos", value: "true"),
         URLQueryItem(name: "sounds", value: "false"),
-        URLQueryItem(name: "quality_grade", value: "research")
+        URLQueryItem(name: "quality_grade", value: "research"),
+        URLQueryItem(name: "locale", value: "es-MX"),
+        URLQueryItem(name: "iconic_taxa", value: "Plantae") // Solo plantas
     ]
 
     guard let url = components.url else {
-        print("Error: URL inválida")
-        completion(.failure(NetworkError.invalidURL))
+        DispatchQueue.main.async { completion(.failure(NetworkError.invalidURL)) }
         return
     }
+    print("Solicitando URL (Featured Plants): \(url.absoluteString)")
 
-    print("Solicitando URL: \(url.absoluteString)")
-
-    // 2. Crear Tarea de Red (igual que antes)
     let task = URLSession.shared.dataTask(with: url) { data, response, error in
-        // 3. Manejar Errores Iniciales (igual que antes)
         if let error = error {
-            print("Network Error: \(error.localizedDescription)")
-            // Asegurar que el completion se llame en el hilo principal si causa updates de UI
-            DispatchQueue.main.async { completion(.failure(error)) }
+             DispatchQueue.main.async { completion(.failure(error)) }
             return
         }
-
-        // 4. Validar Respuesta HTTP (igual que antes)
         guard let httpResponse = response as? HTTPURLResponse else {
-             print("Network Error: Invalid response type")
              DispatchQueue.main.async { completion(.failure(NetworkError.badResponse(statusCode: -1))) }
              return
          }
          guard (200...299).contains(httpResponse.statusCode) else {
-             print("Network Error: Status Code \(httpResponse.statusCode)")
-              if let data = data, let errorBody = String(data: data, encoding: .utf8) {
-                  print("Error Body: \(errorBody)")
-              }
+              if let data = data, let errorBody = String(data: data, encoding: .utf8) { print("Error Body: \(errorBody)") }
              DispatchQueue.main.async { completion(.failure(NetworkError.badResponse(statusCode: httpResponse.statusCode))) }
              return
          }
-
-        // 5. Validar Datos (igual que antes)
         guard let data = data else {
              DispatchQueue.main.async { completion(.failure(NetworkError.noData)) }
             return
         }
 
-        // 6. Decodificar JSON y Mapear
         do {
             let decoder = JSONDecoder()
-            // No necesitas .convertFromSnakeCase si usas CodingKeys en tus modelos
-
             let observationResponse = try decoder.decode(ObservationResponse.self, from: data)
 
-            // MAPEO: Convertir [Observation] a [FeaturedEvent]
             let featuredEvents = observationResponse.results.compactMap { obs -> FeaturedEvent? in
-
-                // a. Extraer ID
                 let id = obs.id
-
-                // b. Extraer Título (con fallbacks)
-                 // Asegúrate que tu struct Observation y Taxon en iNaturalistModels.swift estén actualizadas
-                let title = obs.taxon?.preferredCommonName ?? obs.taxon?.name ?? obs.speciesGuess ?? "ID: \(id)"
-
-                // c. Extraer y formatear Fecha/Hora
-                let dateTime = formatDateString(obs.observedOnString) // Llama a la función auxiliar
-
-                // d. Extraer Ubicación (con fallback)
+                let rawTitle = obs.taxon?.preferredCommonName ?? obs.taxon?.name ?? obs.speciesGuess ?? "ID: \(id)"
+                let title = rawTitle.capitalized
+                let dateTime = formatDateString(obs.observedOnString) // Usar función auxiliar
                 let location = obs.placeGuess ?? "Ubicación desconocida"
-
-                // e. Extraer y MODIFICAR URL de Imagen (**CORRECCIÓN DEL TYPO AQUÍ**)
-                //    Usamos optional chaining (?) por si photos o url son nil, y ?? para un default si falla la modificación (poco probable)
-                let mappedImageURLString = obs.photos?.first?.url?.replacingOccurrences(of: "square", with: "medium")
-
-                // f. Extraer URL de la observación web (opcional)
                 let observationURL = obs.uri
+                guard let imageURLString = obs.photos?.first?.url?.replacingOccurrences(of: "square", with: "medium") else {
+                    return nil // Necesitamos imagen para eventos destacados
+                }
 
-                // g. Filtrar si falta imagen (ahora imageURL es opcional en FeaturedEvent)
-                 guard mappedImageURLString != nil else {
-                     // print("Observación \(id) descartada: Sin URL de foto válida.")
-                     return nil
-                 }
+                // Opcional: Filtrar también si la fecha no es válida aquí, además de en el ViewModel
+                // guard dateTime != "Fecha inválida" else { return nil }
 
-                // h. Crear el objeto FeaturedEvent
                 return FeaturedEvent(id: id,
                                      title: title,
                                      dateTime: dateTime,
                                      location: location,
-                                     imageURL: mappedImageURLString, // Ahora sí es String?
+                                     imageURL: imageURLString,
                                      observationURL: observationURL)
             }
-
-            print("Mapeo completado. Eventos mapeados y válidos: \(featuredEvents.count) de \(observationResponse.results.count) recibidos.")
-            // Llamar al completion en el hilo principal porque actualizará la UI
             DispatchQueue.main.async { completion(.success(featuredEvents)) }
 
         } catch let decodingError {
-            print("---- Decoding Error ----")
-            // ... (código de detalle de error de decodificación) ...
+            print("---- Decoding Error (Featured) ----\n\(decodingError)\n------------------------")
+            if let jsonString = String(data: data, encoding: .utf8) { print("Raw JSON causing error:\n\(jsonString)") }
             DispatchQueue.main.async { completion(.failure(NetworkError.decodingError(decodingError))) }
         } catch {
-            print("Unknown Error during fetch/processing: \(error)")
-            DispatchQueue.main.async { completion(.failure(error)) }
-        }
+             DispatchQueue.main.async { completion(.failure(error)) }
+         }
     }
-    // 7. Iniciar Tarea
     task.resume()
 }
 
 
+// --- Función para obtener Observaciones Cercanas por Taxon ---
+func fetchObservationsNearbyForTaxa(
+    latitude: Double,
+    longitude: Double,
+    radius: Double = 30.0,
+    taxonIDs: [Int],
+    resultsPerPage: Int = 50,
+    completion: @escaping (Result<[Observation], Error>) -> Void // Devuelve [Observation]
+) {
+     guard !taxonIDs.isEmpty else {
+         DispatchQueue.main.async { completion(.success([])) }
+         return
+     }
+     let taxonIDString = taxonIDs.map { String($0) }.joined(separator: ",")
+
+     var components = URLComponents(string: "https://api.inaturalist.org/v1/observations")!
+     components.queryItems = [
+         URLQueryItem(name: "lat", value: "\(latitude)"),
+         URLQueryItem(name: "lng", value: "\(longitude)"),
+         URLQueryItem(name: "radius", value: "\(radius)"),
+         URLQueryItem(name: "taxon_id", value: taxonIDString),
+         URLQueryItem(name: "per_page", value: "\(resultsPerPage)"),
+         URLQueryItem(name: "photos", value: "true"),
+         URLQueryItem(name: "order", value: "desc"),
+         URLQueryItem(name: "order_by", value: "observed_on"),
+         URLQueryItem(name: "locale", value: "es-MX")
+     ]
+
+     guard let url = components.url else {
+         DispatchQueue.main.async { completion(.failure(NetworkError.invalidURL)) }
+         return
+     }
+     print("Solicitando URL (Nearby Taxa): \(url.absoluteString)")
+
+     let task = URLSession.shared.dataTask(with: url) { data, response, error in
+        // ... (Manejo de errores y validación de respuesta, similar a la otra función) ...
+         if let error = error { /* ... */ DispatchQueue.main.async { completion(.failure(error)) }; return }
+         guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else { /* ... */ DispatchQueue.main.async { completion(.failure(NetworkError.badResponse(statusCode: (response as? HTTPURLResponse)?.statusCode ?? -1))) }; return }
+         guard let data = data else { /* ... */ DispatchQueue.main.async { completion(.failure(NetworkError.noData)) }; return }
+
+        do {
+            let decoder = JSONDecoder()
+            let observationResponse = try decoder.decode(ObservationResponse.self, from: data)
+
+            print("Observaciones cercanas por Taxon recibidas: \(observationResponse.results.count)")
+            // Devolver directamente el array de [Observation]
+            DispatchQueue.main.async { completion(.success(observationResponse.results)) }
+
+        } catch let decodingError {
+             print("---- Decoding Error (Nearby Taxa) ----\n\(decodingError)\n------------------------")
+             if let jsonString = String(data: data, encoding: .utf8) { print("Raw JSON causing error:\n\(jsonString)") }
+             DispatchQueue.main.async { completion(.failure(NetworkError.decodingError(decodingError))) }
+         } catch {
+              DispatchQueue.main.async { completion(.failure(error)) }
+          }
+     }
+     task.resume()
+ }
+
+
 // --- Función Auxiliar para Formatear Fecha (CORREGIDA) ---
-// (Mantenerla en este archivo o moverla a un archivo de utilidades global)
 func formatDateString(_ dateString: String?) -> String {
     guard let dateString = dateString, !dateString.isEmpty else { return "Fecha desconocida" }
-
+    
     let outputFormatter = DateFormatter()
     outputFormatter.dateStyle = .medium
     outputFormatter.timeStyle = .short
-    outputFormatter.locale = Locale(identifier: "es_MX") // O tu locale preferido
-
-    // Intentar primero con ISO8601DateFormatter (maneja offsets y 'Z')
-    let isoFormatters = [ISO8601DateFormatter(), ISO8601DateFormatter()]
-    isoFormatters[0].formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-    isoFormatters[1].formatOptions = [.withInternetDateTime] // Sin segundos fraccionales
-
-    for formatter in isoFormatters {
-        if let date = formatter.date(from: dateString) {
-            // Determinar si solo tenía fecha para no mostrar hora 00:00
-            let components = Calendar.current.dateComponents([.hour, .minute, .second], from: date)
-            if components.hour == 0 && components.minute == 0 && components.second == 0 && !dateString.contains("T") {
-                 outputFormatter.timeStyle = .none
-            } else {
-                 outputFormatter.timeStyle = .short
-            }
-            return outputFormatter.string(from: date)
-        }
+    outputFormatter.locale = Locale(identifier: "es_MX")
+    
+    // 1. Intentar con ISO8601DateFormatter (más robusto para zonas horarias/fracciones)
+    let isoFormatter1 = ISO8601DateFormatter()
+    isoFormatter1.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    if let date = isoFormatter1.date(from: dateString) {
+        let components = Calendar.current.dateComponents([.hour, .minute, .second], from: date)
+        if components.hour == 0 && components.minute == 0 && components.second == 0 && !dateString.contains("T") { outputFormatter.timeStyle = .none } else { outputFormatter.timeStyle = .short }
+        return outputFormatter.string(from: date)
     }
-
-
-    // Si ISO8601 falla, intentar con formatos específicos DateFormatter
+    
+    let isoFormatter2 = ISO8601DateFormatter()
+    isoFormatter2.formatOptions = [.withInternetDateTime] // Sin fracciones
+    if let date = isoFormatter2.date(from: dateString) {
+        let components = Calendar.current.dateComponents([.hour, .minute, .second], from: date)
+        if components.hour == 0 && components.minute == 0 && components.second == 0 && !dateString.contains("T") { outputFormatter.timeStyle = .none } else { outputFormatter.timeStyle = .short }
+        return outputFormatter.string(from: date)
+    }
+    
+    // 2. Si falla ISO8601, intentar con DateFormatter para formatos específicos
     let specificFormatters: [DateFormatter] = [
-        { // Formato yyyy-MM-dd HH:mm:ss
+        {
             let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss" // Como "2025-04-02 15:34:35"
             formatter.locale = Locale(identifier: "en_US_POSIX")
-            formatter.timeZone = TimeZone(secondsFromGMT: 0) // Asume UTC si no se especifica
+            formatter.timeZone = TimeZone(secondsFromGMT: 0) // Asume UTC si no hay zona
             return formatter
         }(),
-        { // Formato yyyy-MM-dd (solo fecha)
-             let formatter = DateFormatter()
-             formatter.dateFormat = "yyyy-MM-dd"
-             formatter.locale = Locale(identifier: "en_US_POSIX")
-             formatter.timeZone = TimeZone(secondsFromGMT: 0)
-             return formatter
-         }()
-        // Puedes añadir más DateFormatters aquí si encuentras otros formatos en la API
+        {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd" // Solo fecha
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = TimeZone(secondsFromGMT: 0)
+            return formatter
+        }()
     ]
-
+    
     for formatter in specificFormatters {
         if let date = formatter.date(from: dateString) {
-             if formatter.dateFormat == "yyyy-MM-dd" {
-                 outputFormatter.timeStyle = .none
-             } else {
-                 outputFormatter.timeStyle = .short
-             }
+            if formatter.dateFormat == "yyyy-MM-dd" { outputFormatter.timeStyle = .none } else { outputFormatter.timeStyle = .short }
             return outputFormatter.string(from: date)
         }
+        
     }
-
-
-    // Fallback si nada funciona
+    // 3. Fallback si ningún formato funcionó
     print("Advertencia: No se pudo formatear la fecha '\(dateString)' con los formatos conocidos.")
-    return "Fecha inválida" // O devuelve el string original: dateString
+    return "Fecha inválida"
+    
 }
