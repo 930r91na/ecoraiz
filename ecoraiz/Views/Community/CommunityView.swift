@@ -1,400 +1,488 @@
 import SwiftUI
+import MapKit
 
 // --- Vista Principal ---
 struct CommunityView: View {
-    @State private var showingSheet = false // Para mostrar la hoja de creación
+    @State private var showingSheet = false
     
-    // --- ESTADO PARA LAS OBSERVACIONES DESTACADAS (desde la API) ---
-    @State private var featuredObservations: [FeaturedEvent] = [] // Renombrado para claridad
+    @State private var featuredObservations: [FeaturedEvent] = []
+    @State private var isLoadingFeatured = false
+    @State private var featuredLoadError: Error? = nil
     
-    // --- ESTADO PARA LA CARGA ---
-    @State private var isLoadingFeatured = false // Para controlar el ProgressView
-    @State private var featuredLoadError: Error? = nil // Para manejar errores (opcional)
+    // Ejemplo de estados para un "Crear Evento"
+    @State private var eventName: String = ""
+    @State private var date: Date = Date()
+    @State private var location: String = ""
+    @State private var maxParticipants: Int = 20
+    
+    @ObservedObject private var locationManager = LocationManager()
     
     var body: some View {
         NavigationView {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 20) {
                     
-                    // --- Sección de Últimas Observaciones (Adaptada para API) ---
+                    // --- Sección de Últimas Observaciones ---
                     VStack(alignment: .leading) {
-                        Text("Últimas observaciones") // Título actualizado
+                        Text("Últimas observaciones")
                             .font(.title2)
                             .fontWeight(.bold)
                             .padding(.horizontal)
                             .padding(.bottom, 5)
                         
                         if isLoadingFeatured {
-                            ProgressView() // Muestra un spinner centrado mientras carga
-                                .frame(height: 150) // Altura similar a la de las tarjetas
-                                .frame(maxWidth: .infinity) // Ocupa el ancho disponible
+                            ProgressView()
+                                .frame(height: 150)
+                                .frame(maxWidth: .infinity)
                         } else if let error = featuredLoadError {
-                            // Opcional: Muestra un mensaje de error
                             Text("Error al cargar: \(error.localizedDescription)")
                                 .foregroundColor(.red)
                                 .frame(height: 150)
                                 .frame(maxWidth: .infinity)
                                 .padding(.horizontal)
                         } else if featuredObservations.isEmpty {
-                            // Si no está cargando y está vacío (y sin error)
                             Text("No hay observaciones destacadas.")
                                 .foregroundColor(.secondary)
                                 .frame(height: 150)
                                 .frame(maxWidth: .infinity)
                                 .padding(.horizontal)
                         } else {
-                            // Muestra la sección normal una vez cargados los datos
-                            FeaturedObservationsSection(observations: featuredObservations) // Pasa los datos cargados
+                            FeaturedObservationsSection(observations: featuredObservations)
                         }
-                    } // Fin VStack Sección Observaciones
+                    }
                     
-                
+                    // --- Sección de Eventos ---
                     Text("Eventos cerca de ti")
+                        .font(.title2)
                         .fontWeight(.bold)
                         .padding(.horizontal)
                         .padding(.bottom, 5)
-                        .font(.title2)
-                    // --- Sección de Lista de Eventos Comunitarios (sin cambios) ---
+                    
                     EventsListSection(events: communityEvents)
                         .padding(.horizontal)
-                    
-                } // Fin VStack principal
-            } // Fin ScrollView
+                }
+            }
             .navigationTitle("Comunidad")
             .toolbar {
-                // Botón para añadir evento (vuelve a usar showingSheet)
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
-                        showingSheet.toggle() // Abre la hoja de creación
+                        showingSheet.toggle()
                     } label: {
                         Image(systemName: "plus")
                     }
                 }
             }
-            // Hoja para crear evento (se mantiene)
             .sheet(isPresented: $showingSheet) {
+                // Opción A: CreateEventView se encarga internamente de su locationManager
                 CreateEventView(showingSheet: $showingSheet)
+                
+                // Opción B (si quisieras pasarle una función):
+                // CreateEventView(showingSheet: $showingSheet,
+                //                 useCurrentLocation: self.useCurrentLocation)
             }
-            // --- LLAMADA A LA API AL APARECER LA VISTA ---
             .onAppear {
-                // Solo carga si no se han cargado antes o si hubo error
                 if featuredObservations.isEmpty && featuredLoadError == nil {
                     loadFeaturedObservations()
                 }
             }
-            // Cambia el estilo de la barra de navegación si prefieres el título inline
-            // .navigationBarTitleDisplayMode(.inline)
-        } // Fin NavigationView
-    } // Fin body
+        }
+    }
     
-    // --- Función para cargar los datos ---
+    // MARK: - Carga de Observaciones
     func loadFeaturedObservations() {
         print("Iniciando carga de observaciones...")
         isLoadingFeatured = true
         featuredLoadError = nil
         
-        // Pide un poco más de datos para tener margen al filtrar (ej: 20)
         fetchFeaturedEventsFromINaturalist(placeId: 6793, count: 20) { result in
             DispatchQueue.main.async {
                 isLoadingFeatured = false
                 switch result {
                 case .success(let fetchedEvents):
-                    // --- FILTRAR RESULTADOS AQUÍ ---
                     let filteredEvents = fetchedEvents.filter { event in
-                        // Define qué campos son indispensables.
-                        // ¡Asegúrate que estas condiciones coincidan con CÓMO manejas los nulos en el mapeo!
-                        // Si tu mapeo convierte nil -> "Ubicación desconocida", debes filtrar por eso.
-                        
-                        // Ejemplo más estricto: Requiere título no por defecto, fecha válida, lugar válido e imagen
                         let isDateValid = event.dateTime != "Fecha inválida"
-                        let hasGoodTitle = event.title != "Observación sin identificar" && event.title != "Observation" && !event.title.starts(with: "Observación ID:") // Ajusta según tus fallbacks
-                        let hasGoodDate = event.dateTime != "Fecha desconocida" && event.dateTime != "Date unknown"
-                        let hasGoodLocation = event.location != "Ubicación desconocida" && event.location != "Location unknown"
+                        let hasGoodTitle = event.title != "Observación sin identificar"
+                        let hasGoodDate = event.dateTime != "Fecha desconocida"
+                        let hasGoodLocation = event.location != "Ubicación desconocida"
                         let hasImage = event.imageURL != nil && !(event.imageURL ?? "").isEmpty
                         
                         return isDateValid && hasGoodTitle && hasGoodDate && hasGoodLocation && hasImage
                     }
-                    
                     self.featuredObservations = filteredEvents
-                    print("Observaciones cargadas: \(fetchedEvents.count), Filtradas y mostradas: \(filteredEvents.count)")
-                    
-                    if filteredEvents.isEmpty && !fetchedEvents.isEmpty {
-                        // Opcional: Informar si todos los resultados fueron filtrados
-                        print("Advertencia: Todas las observaciones cargadas fueron filtradas por datos faltantes.")
-                        // Podrías incluso asignar un error personalizado aquí para mostrar un mensaje al usuario
-                        // self.featuredLoadError = MyCustomError.noValidObservationsFound
-                    }
-                    
                 case .failure(let error):
-                    print("Error al cargar observaciones destacadas: \(error.localizedDescription)")
+                    print("Error al cargar: \(error.localizedDescription)")
                     self.featuredLoadError = error
-                    self.featuredObservations = [] // Limpia en caso de error
+                    self.featuredObservations = []
                 }
             }
-        }
-    }
-    
-    // Fin CommunityView
-    
-    // --- Subvista: Sección Últimas Observaciones ---
-    // Renombrada para claridad y adaptada para recibir [FeaturedEvent]
-    struct FeaturedObservationsSection: View {
-        let observations: [FeaturedEvent]
-        
-        var body: some View {
-            // El VStack que contenía el título ahora está en CommunityView
-            // para manejar el estado de carga. Aquí solo mostramos el ScrollView.
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 15) {
-                    ForEach(observations) { observation in // Itera sobre las observaciones cargadas
-                        FeaturedObservationCard(event: observation) // Usa la tarjeta adaptada
-                    }
-                }
-                .padding(.horizontal) // Padding para que las tarjetas no peguen a los bordes
-                .padding(.bottom) // Padding inferior
-            }
-            .frame(height: 170) // Opcional: Fija una altura para el scroll view si es necesario
-        }
-    }
-    
-    // --- Subvista: Tarjeta Observación Destacada ---
-    // Renombrada y usa AsyncImage y el botón de enlace
-    struct FeaturedObservationCard: View {
-        let event: FeaturedEvent // Recibe el modelo adaptado FeaturedEvent
-        @Environment(\.openURL) var openURL // Para abrir el hipervínculo
-        
-        var body: some View {
-            ZStack(alignment: .bottomLeading) {
-                // --- Usa AsyncImage para cargar la imagen desde la URL ---
-                AsyncImage(url: URL(string: event.imageURL ?? "")) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                            .frame(width: 250, height: 150)
-                            .background(Color.gray.opacity(0.3))
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    case .failure:
-                        Image(systemName: "photo.fill") // Placeholder en caso de error
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 50, height: 50)
-                            .foregroundColor(.gray)
-                            .frame(width: 250, height: 150)
-                            .background(Color.gray.opacity(0.1))
-                    @unknown default:
-                        EmptyView()
-                            .frame(width: 250, height: 150)
-                    }
-                }
-                .frame(width: 250, height: 150) // Aplica el frame al contenedor de AsyncImage
-                .clipped() // Recorta al frame
-                
-                // --- Overlay oscuro (igual que antes) ---
-                LinearGradient(gradient: Gradient(colors: [.clear, .black.opacity(0.7)]), startPoint: .center, endPoint: .bottom)
-                
-                // --- Contenido de texto (Usa los campos de FeaturedEvent) ---
-                VStack(alignment: .leading) {
-                    Text(event.title) // Título (p.ej. nombre especie)
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                    
-                    HStack {
-                        Image(systemName: "clock")
-                        Text(event.dateTime) // Fecha observación
-                    }
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.9))
-                    
-                    HStack {
-                        Image(systemName: "location.fill")
-                        Text(event.location) // Lugar observación
-                    }
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.9))
-                    .lineLimit(1)
-                }
-                .padding()
-                
-                // --- BOTÓN PARA ABRIR ENLACE (NUEVO) ---
-                if let urlString = event.observationURL, let url = URL(string: urlString) {
-                    Button {
-                        openURL(url) // Acción para abrir el enlace de iNaturalist
-                    } label: {
-                        Image(systemName: "link.circle.fill") // Icono de enlace
-                            .font(.title2)
-                            .foregroundColor(.white)
-                            .padding(5)
-                            .background(Color.black.opacity(0.5))
-                            .clipShape(Circle())
-                    }
-                    .padding(8) // Padding para separar de la esquina
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing) // Posición arriba a la derecha
-                }
-                // --- FIN DEL BOTÓN ---
-                
-            } // Fin ZStack
-            .frame(width: 250, height: 150) // Tamaño total de la tarjeta
-            .cornerRadius(12)
-            .shadow(radius: 5)
-        }
-    }
-    
-    // -- Vista para crear un nuevo evento --
-    struct CreateEventView: View {
-        @Binding var showingSheet: Bool // Recibe showingSheet como un Binding
-        @State private var eventName = ""
-        @State private var date = Date()
-        @State private var location = ""
-        @State private var maxParticipants = 20
-        
-        var body: some View {
-            NavigationView {
-                Form {
-                    Section(header: Text("Detalles del Evento")) {
-                        TextField("Nombre del evento", text: $eventName)
-                        DatePicker("Fecha", selection: $date, displayedComponents: [.date, .hourAndMinute])
-                        TextField("Ubicación", text: $location)
-                        Stepper("Máximo de participantes: \(maxParticipants)", value: $maxParticipants, in: 1...100)
-                    }
-                }
-                .navigationTitle("Crear Evento")
-                .navigationBarItems(
-                    leading: Button("Cancelar") {
-                        showingSheet = false // Cierra la hoja al tocar "Cancelar"
-                    },
-                    trailing: Button("Crear") {
-                        // Acción para crear el evento
-                    }
-                )
-            }
-        }
-    }
-    
-    
-    // --- Subvista: Sección Lista de Eventos ---
-    struct EventsListSection: View {
-        let events: [CommunityEvent]
-        
-        var body: some View {
-            VStack(spacing: 20) { // Espacio entre las tarjetas de evento
-                ForEach(events) { event in
-                    CommunityEventCard(event: event)
-                }
-            }
-        }
-    }
-    
-    // --- Subvista: Tarjeta Evento Comunitario ---
-    struct CommunityEventCard: View {
-        let event: CommunityEvent
-        @State private var showEventDetails: Bool = false
-        
-        var body: some View {
-            Button(action: {
-                showEventDetails = true
-            }) {
-                VStack(alignment: .leading, spacing: 0) {
-                    // Event Image
-                    ZStack(alignment: .topTrailing) {
-                        // For production, you'd want to use AsyncImage
-                        
-                            Image(event.imageName)
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(height: 180)
-                                .frame(maxWidth: .infinity)
-                                .clipped()
-                        
-                        
-                        // Status Badge
-                        Text(event.status)
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(event.statusColor)
-                            .foregroundColor(.white)
-                            .cornerRadius(15)
-                            .padding(12)
-                    }
-                    
-                    // Event Details
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(event.title)
-                            .font(.headline)
-                            .foregroundColor(.darkGreen)
-                            .lineLimit(2)
-                        
-                        HStack {
-                            // Date and Location
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "calendar")
-                                        .font(.subheadline)
-                                        .foregroundColor(.primaryGreen)
-                                    
-                                    Text(event.dateTime)
-                                        .font(.subheadline)
-                                        .foregroundColor(.gray)
-                                }
-                                
-                                HStack(spacing: 6) {
-                                    Image(systemName: "mappin.circle.fill")
-                                        .font(.subheadline)
-                                        .foregroundColor(.primaryGreen)
-                                    
-                                    Text(event.location)
-                                        .font(.subheadline)
-                                        .foregroundColor(.gray)
-                                        .lineLimit(1)
-                                }
-                            }
-                            
-                            Spacer()
-                            
-                            // Attendee Counter
-                            HStack(spacing: 4) {
-                                Image(systemName: "person.2.fill")
-                                    .font(.subheadline)
-                                    .foregroundColor(.primaryGreen)
-                                
-                                Text("\(event.attendeeCount)")
-                                    .font(.subheadline)
-                                    .foregroundColor(.primaryGreen)
-                                    .fontWeight(.semibold)
-                            }
-                        }
-                    }
-                    .padding(16)
-                    .background(Color.gray)
-                }
-                .background(Color.white)
-                .cornerRadius(16)
-                .shadow(color: Color.darkGreen.opacity(0.15), radius: 8, x: 0, y: 4)
-            }
-            .buttonStyle(PlainButtonStyle())
-            .sheet(isPresented: $showEventDetails) {
-                EventExpandedView(event: event)
-            }
-        }
-    }
-
-    
-    
-    // --- Preview para el Canvas de Xcode ---
-    struct CommunityView_Previews: PreviewProvider {
-        static var previews: some View {
-            CommunityView()
-            // Puedes previsualizar en modo oscuro también
-            // .preferredColorScheme(.dark)
         }
     }
 }
 
-#Preview {
-    CommunityView()
+// --- Sección de Observaciones Destacadas ---
+struct FeaturedObservationsSection: View {
+    let observations: [FeaturedEvent]
+    
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 15) {
+                ForEach(observations) { observation in
+                    FeaturedObservationCard(event: observation)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.bottom)
+        }
+        .frame(height: 170)
+    }
+}
+
+// --- Tarjeta para cada Observación Destacada ---
+struct FeaturedObservationCard: View {
+    let event: FeaturedEvent
+    @Environment(\.openURL) var openURL
+    
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            AsyncImage(url: URL(string: event.imageURL ?? "")) { phase in
+                switch phase {
+                case .empty:
+                    ProgressView()
+                        .frame(width: 250, height: 150)
+                        .background(Color.gray.opacity(0.3))
+                case .success(let image):
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                case .failure:
+                    Image(systemName: "photo.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 50, height: 50)
+                        .foregroundColor(.gray)
+                        .frame(width: 250, height: 150)
+                        .background(Color.gray.opacity(0.1))
+                @unknown default:
+                    EmptyView()
+                        .frame(width: 250, height: 150)
+                }
+            }
+            .frame(width: 250, height: 150)
+            .clipped()
+            
+            LinearGradient(gradient: Gradient(colors: [.clear, .black.opacity(0.7)]),
+                           startPoint: .center,
+                           endPoint: .bottom)
+            
+            VStack(alignment: .leading) {
+                Text(event.title)
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                
+                HStack {
+                    Image(systemName: "clock")
+                    Text(event.dateTime)
+                }
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.9))
+                
+                HStack {
+                    Image(systemName: "location.fill")
+                    Text(event.location)
+                }
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.9))
+                .lineLimit(1)
+            }
+            .padding()
+            
+            if let urlString = event.observationURL, let url = URL(string: urlString) {
+                Button {
+                    openURL(url)
+                } label: {
+                    Image(systemName: "link.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.white)
+                        .padding(5)
+                        .background(Color.black.opacity(0.5))
+                        .clipShape(Circle())
+                }
+                .padding(8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+            }
+        }
+        .frame(width: 250, height: 150)
+        .cornerRadius(12)
+        .shadow(radius: 5)
+    }
+}
+
+// --- Subvista: Sección Lista de Eventos ---
+struct EventsListSection: View {
+    let events: [CommunityEvent]
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            ForEach(events) { event in
+                CommunityEventCard(event: event)
+            }
+        }
+    }
+}
+
+struct CommunityEventCard: View {
+    let event: CommunityEvent
+    @State private var showEventDetails = false
+    
+    var body: some View {
+        Button {
+            showEventDetails = true
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                ZStack(alignment: .topTrailing) {
+                    if event.imageName.hasPrefix("http") {
+                        AsyncImage(url: URL(string: event.imageName)) { phase in
+                            switch phase {
+                            case .empty:
+                                ProgressView()
+                                    .frame(height: 180)
+                                    .frame(maxWidth: .infinity)
+                                    .background(Color.gray.opacity(0.3))
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(height: 180)
+                                    .frame(maxWidth: .infinity)
+                                    .clipped()
+                            case .failure:
+                                Image(systemName: "photo.fill")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(height: 180)
+                                    .frame(maxWidth: .infinity)
+                                    .background(Color.gray.opacity(0.1))
+                            @unknown default:
+                                EmptyView()
+                            }
+                        }
+                    } else {
+                        Image(event.imageName)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(height: 180)
+                            .frame(maxWidth: .infinity)
+                            .clipped()
+                    }
+                    
+                    Text(event.status)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(event.statusColor)
+                        .foregroundColor(.white)
+                        .cornerRadius(15)
+                        .padding(12)
+                }
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(event.title)
+                        .font(.headline)
+                        .foregroundColor(.darkGreen)
+                        .lineLimit(2)
+                    
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "calendar")
+                                    .font(.subheadline)
+                                    .foregroundColor(.primaryGreen)
+                                Text(event.dateTime)
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+                            }
+                            
+                            HStack(spacing: 6) {
+                                Image(systemName: "mappin.circle.fill")
+                                    .font(.subheadline)
+                                    .foregroundColor(.primaryGreen)
+                                Text(event.location)
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+                                    .lineLimit(1)
+                            }
+                        }
+                        Spacer()
+                        HStack(spacing: 4) {
+                            Image(systemName: "person.2.fill")
+                                .font(.subheadline)
+                                .foregroundColor(.primaryGreen)
+                            Text("\(event.attendeeCount)")
+                                .font(.subheadline)
+                                .foregroundColor(.primaryGreen)
+                                .fontWeight(.semibold)
+                        }
+                    }
+                }
+                .padding(16)
+                .background(Color.gray.opacity(0.1))
+            }
+            .background(Color.white)
+            .cornerRadius(16)
+            .shadow(color: Color.darkGreen.opacity(0.15), radius: 8, x: 0, y: 4)
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showEventDetails) {
+            EventExpandedView(event: event)
+        }
+    }
+}
+
+
+// --- CreateEventView en nivel superior ---
+struct CreateEventView: View {
+    @Binding var showingSheet: Bool
+    
+    @State private var eventName: String = ""
+    @State private var date: Date = Date()
+    @State private var location: String = ""
+    @State private var maxParticipants: Int = 20
+    
+    // Cada vista maneja su propio LocationManager (o lo recibes por inyección si prefieres)
+    @ObservedObject private var locationManager = LocationManager()
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    
+                    // Nombre del Evento
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Nombre del Evento")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        TextField("Ingrese el nombre del evento", text: $eventName)
+                            .padding()
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(8)
+                    }
+                    
+                    // Fecha y Hora
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Fecha y Hora")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        DatePicker("", selection: $date, displayedComponents: [.date, .hourAndMinute])
+                            .datePickerStyle(GraphicalDatePickerStyle())
+                            .labelsHidden()
+                            .accentColor(Color.primaryGreen)
+                            .padding(5)
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(8)
+                    }
+                    
+                    // Ubicación
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Ubicación")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        HStack {
+                            TextField("Ingrese la ubicación del evento", text: $location)
+                                .padding()
+                                .background(Color.gray.opacity(0.1))
+                                .cornerRadius(8)
+                            
+                            Button {
+                                useCurrentLocation()
+                            } label: {
+                                Image(systemName: "location.fill")
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .background(Color.primaryGreen)
+                                    .cornerRadius(8)
+                            }
+                        }
+                    }
+                    
+                    // Máximo de Participantes
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Máximo de Participantes")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        Stepper(value: $maxParticipants, in: 1...100) {
+                            Text("\(maxParticipants) participantes")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding()
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(8)
+                    }
+                    
+                    Spacer(minLength: 20)
+                }
+                .padding()
+            }
+            .navigationTitle("Crear Evento")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancelar") {
+                        showingSheet = false
+                    }
+                    .foregroundColor(Color.primaryGreen)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Crear") {
+                        // Lógica de creación
+                        createEvent()
+                    }
+                    .fontWeight(.bold)
+                    .foregroundColor(Color.primaryGreen)
+                    .disabled(eventName.isEmpty || location.isEmpty)
+                }
+            }
+        }
+    }
+    
+    // MARK: - Funciones
+    
+    private func useCurrentLocation() {
+        guard let coordinate = locationManager.location?.coordinate else {
+            print("Ubicación actual no disponible")
+            return
+        }
+        reverseGeocode(coordinate: coordinate)
+    }
+    
+    private func reverseGeocode(coordinate: CLLocationCoordinate2D) {
+        let geoCoder = CLGeocoder()
+        let loc = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        
+        geoCoder.reverseGeocodeLocation(loc) { placemarks, error in
+            guard let placemark = placemarks?.first, error == nil else {
+                location = "Ubicación desconocida"
+                return
+            }
+            var components: [String] = []
+            if let name = placemark.name { components.append(name) }
+            if let locality = placemark.locality { components.append(locality) }
+            if let adminArea = placemark.administrativeArea { components.append(adminArea) }
+            
+            location = components.joined(separator: ", ")
+        }
+    }
+    
+    private func createEvent() {
+        print("Evento creado: \(eventName), \(location), \(date), máx \(maxParticipants)")
+        showingSheet = false
+    }
+}
+
+struct CommunityView_Previews: PreviewProvider {
+    static var previews: some View {
+        CommunityView()
+    }
 }
