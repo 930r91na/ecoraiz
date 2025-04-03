@@ -224,7 +224,7 @@ struct PlantAlternativeUsesSection: View {
                     HStack(alignment: .top, spacing: 12) {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 18))
-                            .foregroundColor(.primaryGreen)
+                            .foregroundColor(.lightGreen)
                             .frame(width: 24, height: 24)
                         
                         Text(use)
